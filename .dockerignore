@@ -1,0 +1,18 @@
+# Only the server image is built from the repo root; keep the context small.
+**/node_modules
+**/dist
+**/out
+**/.env
+**/.env.*
+!**/.env.example
+**/data
+*.db*
+.git
+.github
+keys
+design
+infra
+apps/client/*
+!apps/client/package.json
+native/*/*
+!native/*/package.json

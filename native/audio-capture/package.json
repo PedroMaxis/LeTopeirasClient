@@ -1,0 +1,17 @@
+{
+  "name": "@letopeiras/audio-capture",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Windows process loopback capture (system or per-app audio, excluding our own app) as an N-API addon",
+  "type": "module",
+  "scripts": {
+    "install": "node scripts/ensure-built.js",
+    "build:native": "node-gyp rebuild",
+    "ensure": "node scripts/ensure-built.js",
+    "smoke": "node test/smoke.js"
+  },
+  "devDependencies": {
+    "node-addon-api": "^8.9.2",
+    "node-gyp": "^12.4.0"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@letopeiras/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
+    "build": "tsdown",
+    "start": "node dist/index.mjs",
+    "create-admin": "tsx --env-file-if-exists=.env src/cli/create-admin.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@fastify/websocket": "^11.3.1",
+    "argon2": "^0.45.1",
+    "better-sqlite3": "^13.0.3",
+    "fastify": "^5.12.5",
+    "livekit-server-sdk": "^2.19.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@letopeiras/shared": "workspace:*",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/ws": "^8.18.2",
+    "tsdown": "^0.23.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
+}

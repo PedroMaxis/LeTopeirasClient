@@ -1,0 +1,76 @@
+# Production stack for the Oracle instance (ARM64). Usage: see infra/README.md.
+#
+# Every service uses the host network: LiveKit needs a 10k-port UDP range, which
+# docker-proxy can't publish sanely, and on 127.0.0.1 the services reach each other
+# without exposing anything beyond what the firewall opens (80, 443, 7881, 3478/udp,
+# 50000-60000/udp). Internal ports (3000, 6379, 7880) bind to 127.0.0.1; TURN 5349 is not
+# in the firewall and only trusts PROXY headers from loopback.
+name: letopeiras
+
+x-service: &service
+  restart: unless-stopped
+  network_mode: host
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: '5'
+
+services:
+  redis:
+    <<: *service
+    image: redis:7-alpine
+    # LiveKit only keeps ephemeral room state here; nothing to persist.
+    command: redis-server --bind 127.0.0.1 --port 6379 --save '' --appendonly no
+
+  livekit:
+    <<: *service
+    image: livekit/livekit-server:v1.13.8
+    command: --config /etc/livekit.yaml
+    environment:
+      LIVEKIT_KEYS: '${LIVEKIT_API_KEY:?}: ${LIVEKIT_API_SECRET:?}'
+      LIVEKIT_WEBHOOK_API_KEY: ${LIVEKIT_API_KEY:?}
+      LIVEKIT_TURN_DOMAIN: ${TURN_DOMAIN:?}
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+
+  server:
+    <<: *service
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+    image: letopeiras-server
+    environment:
+      HOST: 127.0.0.1
+      PORT: 3000
+      TRUST_PROXY: 'true'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LIVEKIT_URL: wss://${LIVEKIT_DOMAIN:?}
+      LIVEKIT_API_URL: http://127.0.0.1:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:?}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:?}
+    volumes:
+      - server-data:/data
+    depends_on:
+      - livekit
+
+  caddy:
+    <<: *service
+    build: ./caddy
+    image: letopeiras-caddy
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?}
+      API_DOMAIN: ${API_DOMAIN:?}
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN:?}
+      TURN_DOMAIN: ${TURN_DOMAIN:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  server-data:
+  caddy-data:
+  caddy-config:

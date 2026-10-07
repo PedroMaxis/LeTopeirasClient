@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>LeTopeiras · Seletor de tela</title>
+    <!-- Mockup de referência (1280x800). Não é código de produção: serve de guia visual. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700;800&amp;display=swap"
+    />
+    <style>
+      body {
+        margin: 0;
+      }
+      a {
+        color: #f5a26a;
+      }
+      a:hover {
+        color: #ffc597;
+      }
+      .soil {
+        background-color: #16100c;
+        background-image: radial-gradient(#2b1f17 1.6px, transparent 1.7px);
+        background-size: 20px 20px;
+      }
+    </style>
+    <style>
+      html,
+      body {
+        background: #0e0a08;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        padding: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      style="
+        width: 1280px;
+        height: 800px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: #2a201a;
+        color: #efe3d6;
+        font-family: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+        font-size: 15px;
+      "
+    >
+      <div
+        style="
+          height: 30px;
+          flex: none;
+          background: #16100c;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-left: 12px;
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 6px">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 64 64"
+            aria-hidden="true"
+            style="flex: none; display: block"
+          >
+            <ellipse cx="18" cy="56" rx="7" ry="4.5" fill="#e9b58c"></ellipse>
+            <ellipse cx="46" cy="56" rx="7" ry="4.5" fill="#e9b58c"></ellipse>
+            <circle cx="32" cy="37" r="20" fill="#6e4a33"></circle>
+            <ellipse cx="32" cy="46" rx="11.5" ry="8.5" fill="#b0805d"></ellipse>
+            <circle cx="24.5" cy="35" r="2.2" fill="#1c120b"></circle>
+            <circle cx="39.5" cy="35" r="2.2" fill="#1c120b"></circle>
+            <ellipse cx="32" cy="41" rx="5" ry="3.6" fill="#f08f8f"></ellipse>
+            <rect x="29.2" y="45" width="2.6" height="4.6" rx="0.8" fill="#fff5ea"></rect>
+            <rect x="32.2" y="45" width="2.6" height="4.6" rx="0.8" fill="#fff5ea"></rect>
+            <path d="M14 28a18 16.5 0 0 1 36 0z" fill="#f0782a"></path>
+            <rect x="10" y="26" width="44" height="5" rx="2.5" fill="#c95c18"></rect>
+            <circle
+              cx="32"
+              cy="19"
+              r="5"
+              fill="#ffe08a"
+              stroke="#1c120b"
+              stroke-width="2"
+            ></circle></svg
+          ><span
+            style="
+              font-family: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+              font-size: 13px;
+              font-weight: 800;
+              color: #efe3d6;
+            "
+            >LeTopeiras</span
+          ><span style="font-size: 11px; font-weight: 700; color: #b8a693; letter-spacing: 0.08em"
+            >CLIENT</span
+          >
+        </div>
+        <div style="display: flex">
+          <button
+            type="button"
+            aria-label="Minimizar"
+            style="
+              width: 44px;
+              height: 30px;
+              border: none;
+              background: transparent;
+              color: #b8a693;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14"></path>
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Maximizar"
+            style="
+              width: 44px;
+              height: 30px;
+              border: none;
+              background: transparent;
+              color: #b8a693;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="5" y="5" width="14" height="14" rx="1"></rect>
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Fechar para a bandeja"
+            style="
+              width: 44px;
+              height: 30px;
+              border: none;
+              background: transparent;
+              color: #b8a693;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 6l12 12M18 6L6 18"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div
+        style="
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(0, 0, 0, 0.78);
+        "
+      >
+        <div
+          style="
+            width: 760px;
+            background: #2a201a;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+          "
+        >
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              padding: 20px 24px 12px;
+            "
+          >
+            <h2
+              style="
+                margin: 0;
+                color: #fff5ea;
+                font-family: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+                font-size: 22px;
+                font-weight: 800;
+              "
+            >
+              Compartilhar tela
+            </h2>
+            <button
+              type="button"
+              aria-label="Fechar"
+              style="
+                width: 32px;
+                height: 32px;
+                border: none;
+                border-radius: 6px;
+                background: transparent;
+                color: #b8a693;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                padding: 0;
+              "
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18"></path>
+              </svg>
+            </button>
+          </div>
+          <div style="display: flex; gap: 24px; padding: 0 24px; border-bottom: 1px solid #3e2f25">
+            <button
+              type="button"
+              style="
+                height: 36px;
+                border: none;
+                background: transparent;
+                color: #fff5ea;
+                font: inherit;
+                font-weight: 700;
+                border-bottom: 2px solid #f0782a;
+                padding: 0;
+              "
+            >
+              Aplicativos
+            </button>
+            <button
+              type="button"
+              style="
+                height: 36px;
+                border: none;
+                background: transparent;
+                color: #b8a693;
+                font: inherit;
+                font-weight: 600;
+                padding: 0;
+              "
+            >
+              Telas inteiras
+            </button>
+          </div>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 16px;
+              padding: 20px 24px;
+            "
+          >
+            <button
+              type="button"
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                border: none;
+                background: transparent;
+                padding: 0;
+                color: inherit;
+                font: inherit;
+                text-align: left;
+                cursor: pointer;
+              "
+            >
+              <div
+                style="
+                  height: 118px;
+                  border-radius: 6px;
+                  background: #1f1712;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: #b8a693;
+                  box-shadow: 0 0 0 3px #f0782a;
+                "
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                  <path d="M8 20h8M12 16v4"></path>
+                </svg>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: #fff5ea">
+                Counter-Strike 2
+              </div></button
+            ><button
+              type="button"
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                border: none;
+                background: transparent;
+                padding: 0;
+                color: inherit;
+                font: inherit;
+                text-align: left;
+                cursor: pointer;
+              "
+            >
+              <div
+                style="
+                  height: 118px;
+                  border-radius: 6px;
+                  background: #1f1712;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: #b8a693;
+                  box-shadow: 0 0 0 1px #3e2f25;
+                "
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                  <path d="M8 20h8M12 16v4"></path>
+                </svg>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: #efe3d6">
+                Visual Studio Code
+              </div></button
+            ><button
+              type="button"
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                border: none;
+                background: transparent;
+                padding: 0;
+                color: inherit;
+                font: inherit;
+                text-align: left;
+                cursor: pointer;
+              "
+            >
+              <div
+                style="
+                  height: 118px;
+                  border-radius: 6px;
+                  background: #1f1712;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: #b8a693;
+                  box-shadow: 0 0 0 1px #3e2f25;
+                "
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <rect x="3" y="4" width="18" height="12" rx="2"></rect>
+                  <path d="M8 20h8M12 16v4"></path>
+                </svg>
+              </div>
+              <div style="font-size: 13px; font-weight: 600; color: #efe3d6">Google Chrome</div>
+            </button>
+          </div>
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+              gap: 20px;
+              padding: 16px 24px;
+              background: #211813;
+            "
+          >
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+              >
+                MODO
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 4px;
+                  padding: 4px;
+                  border-radius: 6px;
+                  background: #16100c;
+                "
+              >
+                <button
+                  type="button"
+                  style="
+                    flex: 1;
+                    height: 36px;
+                    border: none;
+                    border-radius: 4px;
+                    background: #f0782a;
+                    color: #1c120b;
+                    font: inherit;
+                    font-size: 14px;
+                    font-weight: 600;
+                  "
+                >
+                  Jogo</button
+                ><button
+                  type="button"
+                  style="
+                    flex: 1;
+                    height: 36px;
+                    border: none;
+                    border-radius: 4px;
+                    background: transparent;
+                    color: #efe3d6;
+                    font: inherit;
+                    font-size: 14px;
+                    font-weight: 600;
+                  "
+                >
+                  Texto / Código
+                </button>
+              </div>
+              <div style="color: #b8a693; font-size: 12px">
+                Jogo prioriza fluidez; Texto prioriza nitidez.
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+              >
+                QUALIDADE
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 4px;
+                  padding: 4px;
+                  border-radius: 6px;
+                  background: #16100c;
+                "
+              >
+                <button
+                  type="button"
+                  style="
+                    flex: 1;
+                    height: 36px;
+                    border: none;
+                    border-radius: 4px;
+                    background: transparent;
+                    color: #efe3d6;
+                    font: inherit;
+                    font-size: 14px;
+                    font-weight: 600;
+                  "
+                >
+                  720p 30</button
+                ><button
+                  type="button"
+                  style="
+                    flex: 1;
+                    height: 36px;
+                    border: none;
+                    border-radius: 4px;
+                    background: #f0782a;
+                    color: #1c120b;
+                    font: inherit;
+                    font-size: 14px;
+                    font-weight: 600;
+                  "
+                >
+                  1080p 60
+                </button>
+              </div>
+              <div style="color: #b8a693; font-size: 12px">Até 6 Mbps de upload no 1080p 60.</div>
+            </div>
+            <div style="grid-column: 1 / -1">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 16px;
+                "
+              >
+                <div>
+                  <div style="color: #fff5ea; font-weight: 600; font-size: 15px">
+                    Compartilhar áudio do aplicativo
+                  </div>
+                  <div style="color: #b8a693; font-size: 13px">
+                    O som do jogo vai junto, sem a voz da chamada.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Compartilhar áudio do aplicativo"
+                  style="
+                    width: 44px;
+                    height: 24px;
+                    flex: none;
+                    border: none;
+                    border-radius: 12px;
+                    background: #f0782a;
+                    position: relative;
+                    padding: 0;
+                  "
+                >
+                  <span
+                    style="
+                      position: absolute;
+                      top: 3px;
+                      right: 3px;
+                      width: 18px;
+                      height: 18px;
+                      border-radius: 50%;
+                      background: #fff;
+                    "
+                  ></span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px">
+            <button
+              type="button"
+              style="
+                height: 40px;
+                padding: 0 20px;
+                border: none;
+                border-radius: 4px;
+                background: transparent;
+                color: #efe3d6;
+                font: inherit;
+                font-weight: 600;
+              "
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              style="
+                height: 40px;
+                padding: 0 24px;
+                border: none;
+                border-radius: 4px;
+                background: #f0782a;
+                color: #1c120b;
+                font: inherit;
+                font-weight: 800;
+              "
+            >
+              Transmitir
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

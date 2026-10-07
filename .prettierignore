@@ -1,0 +1,10 @@
+node_modules
+dist
+out
+pnpm-lock.yaml
+
+# Design references (mockups exported as-is)
+design/
+
+# Native build output
+native/**/build/

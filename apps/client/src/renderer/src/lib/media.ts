@@ -1,0 +1,96 @@
+import {
+  AudioPresets,
+  Track,
+  VideoPreset,
+  type AudioCaptureOptions,
+  type LocalVideoTrack,
+  type RoomOptions,
+  type ScreenShareCaptureOptions,
+  type TrackPublishOptions,
+} from 'livekit-client';
+import type { Settings } from './settings';
+
+/** "Jogo" favors smooth motion; "Texto/Código" favors sharp detail. */
+export type ShareMode = 'motion' | 'detail';
+
+export const shareModeLabels: Record<ShareMode, string> = {
+  motion: 'Jogo',
+  detail: 'Texto / Código',
+};
+
+export type ShareQuality = '720p30' | '720p60' | '1080p60';
+
+export const shareQualities: Record<
+  ShareQuality,
+  { label: string; width: number; height: number; fps: number; maxBitrate: number }
+> = {
+  '720p30': { label: '720p 30', width: 1280, height: 720, fps: 30, maxBitrate: 2_500_000 },
+  '720p60': { label: '720p 60', width: 1280, height: 720, fps: 60, maxBitrate: 4_000_000 },
+  '1080p60': { label: '1080p 60', width: 1920, height: 1080, fps: 60, maxBitrate: 6_000_000 },
+};
+
+export function audioCaptureOptions(s: Settings): AudioCaptureOptions {
+  return {
+    deviceId: s.inputDeviceId,
+    echoCancellation: s.echoCancellation,
+    noiseSuppression: s.noiseSuppression,
+    autoGainControl: s.autoGainControl,
+  };
+}
+
+export function roomOptions(s: Settings): RoomOptions {
+  return {
+    adaptiveStream: true,
+    dynacast: true,
+    audioCaptureDefaults: audioCaptureOptions(s),
+    audioOutput: { deviceId: s.outputDeviceId },
+    publishDefaults: {
+      dtx: true,
+      red: true,
+    },
+  };
+}
+
+export function degradationFor(mode: ShareMode): RTCDegradationPreference {
+  return mode === 'motion' ? 'maintain-framerate' : 'maintain-resolution';
+}
+
+/** Switches the mode of a screen share that is already being published. */
+export async function applyShareMode(track: LocalVideoTrack, mode: ShareMode): Promise<void> {
+  track.mediaStreamTrack.contentHint = mode;
+  await track.setDegradationPreference(degradationFor(mode));
+}
+
+export function screenCaptureOptions(
+  mode: ShareMode,
+  quality: ShareQuality,
+): ScreenShareCaptureOptions {
+  const q = shareQualities[quality];
+  return {
+    audio: false,
+    resolution: { width: q.width, height: q.height, frameRate: q.fps },
+    contentHint: mode,
+  };
+}
+
+/** PC audio that goes with a screen share: stereo music quality, no voice-oriented tricks. */
+export const screenAudioPublishOptions: TrackPublishOptions = {
+  source: Track.Source.ScreenShareAudio,
+  audioPreset: AudioPresets.musicHighQualityStereo,
+  forceStereo: true,
+  dtx: false,
+  red: false,
+};
+
+export function screenPublishOptions(mode: ShareMode, quality: ShareQuality): TrackPublishOptions {
+  const q = shareQualities[quality];
+  return {
+    source: Track.Source.ScreenShare,
+    videoCodec: 'h264',
+    // A 720p layer lets weak connections keep watching a 1080p share.
+    simulcast: quality === '1080p60',
+    screenShareEncoding: { maxBitrate: q.maxBitrate, maxFramerate: q.fps },
+    screenShareSimulcastLayers: [new VideoPreset(1280, 720, 2_500_000, 30)],
+    degradationPreference: degradationFor(mode),
+  };
+}

@@ -1,0 +1,29 @@
+appId: com.letopeiras.client
+productName: LeTopeiras Client
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - resources/**
+  - package.json
+asarUnpack:
+  - '**/*.node'
+# Native loopback capture (native/audio-capture), loaded from process.resourcesPath.
+extraResources:
+  - from: ../../native/audio-capture/build/Release/audio_capture.node
+    to: audio_capture.node
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: LeTopeiras-Client-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  shortcutName: LeTopeiras Client
+npmRebuild: false
+publish: null

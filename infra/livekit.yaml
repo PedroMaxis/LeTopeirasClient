@@ -1,0 +1,47 @@
+# LiveKit SFU. Secrets and domains are not here: docker-compose.yml passes them from
+# infra/.env as LIVEKIT_KEYS, LIVEKIT_WEBHOOK_API_KEY and LIVEKIT_TURN_DOMAIN.
+# Runs on the host network, so 127.0.0.1 is the instance itself.
+
+# Signaling + server API, plain HTTP behind Caddy (LIVEKIT_DOMAIN).
+port: 7880
+bind_addresses:
+  - 127.0.0.1
+
+redis:
+  address: 127.0.0.1:6379
+
+rtc:
+  # Media over UDP; must match the firewall (Security List + setup-firewall.sh).
+  port_range_start: 50000
+  port_range_end: 60000
+  # ICE over TCP when UDP is blocked.
+  tcp_port: 7881
+  # The instance only sees its private IP; discover the public one via STUN.
+  use_external_ip: true
+  # Host networking also sees Docker's bridges; never offer those as candidates.
+  interfaces:
+    excludes:
+      - docker0
+  ips:
+    excludes:
+      - 172.16.0.0/12
+
+turn:
+  enabled: true
+  # TURN over UDP (also serves as STUN).
+  udp_port: 3478
+  # TURN/TLS: Caddy terminates TLS on 443 and forwards plain TCP here. LiveKit
+  # always advertises turns:<domain>:443 to clients.
+  tls_port: 5349
+  external_tls: true
+  proxy_protocol: true
+  # The relay connects to the SFU on the same host; keep it out of the media range.
+  relay_range_start: 30000
+  relay_range_end: 40000
+
+webhook:
+  urls:
+    - http://127.0.0.1:3000/livekit/webhook
+
+logging:
+  level: info

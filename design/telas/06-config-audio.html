@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>LeTopeiras · Configurações de áudio</title>
+    <!-- Mockup de referência (1280x800). Não é código de produção: serve de guia visual. -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Figtree:wght@400;500;600;700;800&amp;display=swap"
+    />
+    <style>
+      body {
+        margin: 0;
+      }
+      a {
+        color: #f5a26a;
+      }
+      a:hover {
+        color: #ffc597;
+      }
+      .soil {
+        background-color: #16100c;
+        background-image: radial-gradient(#2b1f17 1.6px, transparent 1.7px);
+        background-size: 20px 20px;
+      }
+    </style>
+    <style>
+      html,
+      body {
+        background: #0e0a08;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        padding: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      style="
+        width: 1280px;
+        height: 800px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        background: #2a201a;
+        color: #efe3d6;
+        font-family: 'Figtree', 'Segoe UI', system-ui, sans-serif;
+        font-size: 15px;
+      "
+    >
+      <div
+        style="
+          height: 30px;
+          flex: none;
+          background: #16100c;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-left: 12px;
+        "
+      >
+        <div style="display: flex; align-items: center; gap: 6px">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 64 64"
+            aria-hidden="true"
+            style="flex: none; display: block"
+          >
+            <ellipse cx="18" cy="56" rx="7" ry="4.5" fill="#e9b58c"></ellipse>
+            <ellipse cx="46" cy="56" rx="7" ry="4.5" fill="#e9b58c"></ellipse>
+            <circle cx="32" cy="37" r="20" fill="#6e4a33"></circle>
+            <ellipse cx="32" cy="46" rx="11.5" ry="8.5" fill="#b0805d"></ellipse>
+            <circle cx="24.5" cy="35" r="2.2" fill="#1c120b"></circle>
+            <circle cx="39.5" cy="35" r="2.2" fill="#1c120b"></circle>
+            <ellipse cx="32" cy="41" rx="5" ry="3.6" fill="#f08f8f"></ellipse>
+            <rect x="29.2" y="45" width="2.6" height="4.6" rx="0.8" fill="#fff5ea"></rect>
+            <rect x="32.2" y="45" width="2.6" height="4.6" rx="0.8" fill="#fff5ea"></rect>
+            <path d="M14 28a18 16.5 0 0 1 36 0z" fill="#f0782a"></path>
+            <rect x="10" y="26" width="44" height="5" rx="2.5" fill="#c95c18"></rect>
+            <circle
+              cx="32"
+              cy="19"
+              r="5"
+              fill="#ffe08a"
+              stroke="#1c120b"
+              stroke-width="2"
+            ></circle></svg
+          ><span
+            style="
+              font-family: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+              font-size: 13px;
+              font-weight: 800;
+              color: #efe3d6;
+            "
+            >LeTopeiras</span
+          ><span style="font-size: 11px; font-weight: 700; color: #b8a693; letter-spacing: 0.08em"
+            >CLIENT</span
+          >
+        </div>
+        <div style="display: flex">
+          <button
+            type="button"
+            aria-label="Minimizar"
+            style="
+              width: 44px;
+              height: 30px;
+              border: none;
+              background: transparent;
+              color: #b8a693;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M5 12h14"></path>
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Maximizar"
+            style="
+              width: 44px;
+              height: 30px;
+              border: none;
+              background: transparent;
+              color: #b8a693;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="5" y="5" width="14" height="14" rx="1"></rect>
+            </svg>
+          </button>
+          <button
+            type="button"
+            aria-label="Fechar para a bandeja"
+            style="
+              width: 44px;
+              height: 30px;
+              border: none;
+              background: transparent;
+              color: #b8a693;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 6l12 12M18 6L6 18"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div style="flex: 1; display: flex; min-height: 0">
+        <div
+          style="
+            width: 300px;
+            flex: none;
+            background: #211813;
+            display: flex;
+            justify-content: flex-end;
+            padding: 56px 8px 0 0;
+          "
+        >
+          <div style="width: 200px; display: flex; flex-direction: column; gap: 2px">
+            <div
+              style="
+                padding: 6px 10px;
+                color: #b8a693;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+              "
+            >
+              USUÁRIO
+            </div>
+            <a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Minha conta</a
+            ><a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Perfil</a
+            >
+            <div
+              style="
+                padding: 14px 10px 6px;
+                color: #b8a693;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+              "
+            >
+              APLICATIVO
+            </div>
+            <a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                background: #45342a;
+                color: #fff5ea;
+              "
+              >Voz e áudio</a
+            ><a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Transmissão</a
+            ><a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Atalhos</a
+            ><a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Notificações</a
+            >
+            <div
+              style="
+                padding: 14px 10px 6px;
+                color: #b8a693;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+              "
+            >
+              ADMIN
+            </div>
+            <a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Canais</a
+            ><a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Convites</a
+            >
+            <div style="height: 1px; background: #3e2f25; margin: 8px 10px"></div>
+            <a
+              href="#"
+              style="
+                display: block;
+                padding: 6px 10px;
+                border-radius: 4px;
+                text-decoration: none;
+                font-size: 15px;
+                font-weight: 500;
+                color: #b8a693;
+              "
+              >Sair</a
+            >
+          </div>
+        </div>
+        <div style="flex: 1; display: flex; gap: 32px; padding: 56px 40px 0; min-width: 0">
+          <div style="width: 660px; display: flex; flex-direction: column; gap: 24px">
+            <h2
+              style="
+                margin: 0;
+                color: #fff5ea;
+                font-family: 'Bricolage Grotesque', 'Figtree', system-ui, sans-serif;
+                font-size: 22px;
+                font-weight: 800;
+              "
+            >
+              Voz e áudio
+            </h2>
+            <div style="display: flex; gap: 20px">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+                <label
+                  for="sel-entrada"
+                  style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+                  >DISPOSITIVO DE ENTRADA</label
+                >
+                <select
+                  id="sel-entrada"
+                  style="
+                    height: 40px;
+                    border: 1px solid #16100c;
+                    border-radius: 4px;
+                    background: #16100c;
+                    color: #efe3d6;
+                    font: inherit;
+                    padding: 0 10px;
+                  "
+                >
+                  <option>Microfone (Fifine K669)</option>
+                </select>
+              </div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 8px">
+                <label
+                  for="sel-saída"
+                  style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+                  >DISPOSITIVO DE SAÍDA</label
+                >
+                <select
+                  id="sel-saída"
+                  style="
+                    height: 40px;
+                    border: 1px solid #16100c;
+                    border-radius: 4px;
+                    background: #16100c;
+                    color: #efe3d6;
+                    font: inherit;
+                    padding: 0 10px;
+                  "
+                >
+                  <option>Fones (Realtek Audio)</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; gap: 20px">
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 12px">
+                <div
+                  style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+                >
+                  VOLUME DE ENTRADA
+                </div>
+                <div
+                  style="position: relative; height: 8px; border-radius: 4px; background: #4a3a2f"
+                >
+                  <div
+                    style="width: 72%; height: 8px; border-radius: 4px; background: #f0782a"
+                  ></div>
+                  <div
+                    style="
+                      position: absolute;
+                      left: calc(72% - 8px);
+                      top: -6px;
+                      width: 10px;
+                      height: 20px;
+                      border-radius: 3px;
+                      background: #fff;
+                    "
+                  ></div>
+                </div>
+              </div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 12px">
+                <div
+                  style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+                >
+                  VOLUME DE SAÍDA
+                </div>
+                <div
+                  style="position: relative; height: 8px; border-radius: 4px; background: #4a3a2f"
+                >
+                  <div
+                    style="width: 85%; height: 8px; border-radius: 4px; background: #f0782a"
+                  ></div>
+                  <div
+                    style="
+                      position: absolute;
+                      left: calc(85% - 8px);
+                      top: -6px;
+                      width: 10px;
+                      height: 20px;
+                      border-radius: 3px;
+                      background: #fff;
+                    "
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div
+                style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+              >
+                TESTE DE MICROFONE
+              </div>
+              <div style="display: flex; align-items: center; gap: 16px">
+                <button
+                  type="button"
+                  style="
+                    height: 36px;
+                    padding: 0 16px;
+                    border: none;
+                    border-radius: 4px;
+                    background: #f0782a;
+                    color: #1c120b;
+                    font: inherit;
+                    font-weight: 800;
+                  "
+                >
+                  Vamos checar
+                </button>
+                <div style="flex: 1; display: flex; gap: 3px">
+                  <span style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #3fb56b"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span
+                  ><span
+                    style="flex: 1; height: 8px; border-radius: 2px; background: #4a3a2f"
+                  ></span>
+                </div>
+              </div>
+            </div>
+            <div style="height: 1px; background: #3e2f25"></div>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <div
+                style="color: #b8a693; font-size: 12px; font-weight: 800; letter-spacing: 0.04em"
+              >
+                MODO DE ENTRADA
+              </div>
+              <button
+                type="button"
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  height: 44px;
+                  padding: 0 12px;
+                  border: none;
+                  border-radius: 4px;
+                  background: #45342a;
+                  color: #fff5ea;
+                  font: inherit;
+                  font-size: 15px;
+                  font-weight: 600;
+                  text-align: left;
+                "
+              >
+                <span
+                  style="
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    box-sizing: border-box;
+                    border: 2px solid #fff;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                  ><span
+                    style="width: 10px; height: 10px; border-radius: 50%; background: #fff"
+                  ></span></span
+                >Detecção de voz</button
+              ><button
+                type="button"
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  height: 44px;
+                  padding: 0 12px;
+                  border: none;
+                  border-radius: 4px;
+                  background: #211813;
+                  color: #fff5ea;
+                  font: inherit;
+                  font-size: 15px;
+                  font-weight: 600;
+                  text-align: left;
+                "
+              >
+                <span
+                  style="
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    box-sizing: border-box;
+                    border: 2px solid #b8a693;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                  "
+                ></span
+                >Pressione para falar
+              </button>
+            </div>
+            <div style="height: 1px; background: #3e2f25"></div>
+            <div style="display: flex; flex-direction: column; gap: 16px">
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 16px;
+                "
+              >
+                <div>
+                  <div style="color: #fff5ea; font-weight: 600; font-size: 15px">
+                    Cancelamento de eco
+                  </div>
+                  <div style="color: #b8a693; font-size: 13px">
+                    Evita que o som dos fones volte pelo microfone.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Cancelamento de eco"
+                  style="
+                    width: 44px;
+                    height: 24px;
+                    flex: none;
+                    border: none;
+                    border-radius: 12px;
+                    background: #f0782a;
+                    position: relative;
+                    padding: 0;
+                  "
+                >
+                  <span
+                    style="
+                      position: absolute;
+                      top: 3px;
+                      right: 3px;
+                      width: 18px;
+                      height: 18px;
+                      border-radius: 50%;
+                      background: #fff;
+                    "
+                  ></span>
+                </button>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 16px;
+                "
+              >
+                <div>
+                  <div style="color: #fff5ea; font-weight: 600; font-size: 15px">
+                    Supressão de ruído
+                  </div>
+                  <div style="color: #b8a693; font-size: 13px">
+                    Tira teclado mecânico, ventilador e barulho de fundo.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Supressão de ruído"
+                  style="
+                    width: 44px;
+                    height: 24px;
+                    flex: none;
+                    border: none;
+                    border-radius: 12px;
+                    background: #f0782a;
+                    position: relative;
+                    padding: 0;
+                  "
+                >
+                  <span
+                    style="
+                      position: absolute;
+                      top: 3px;
+                      right: 3px;
+                      width: 18px;
+                      height: 18px;
+                      border-radius: 50%;
+                      background: #fff;
+                    "
+                  ></span>
+                </button>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 16px;
+                "
+              >
+                <div>
+                  <div style="color: #fff5ea; font-weight: 600; font-size: 15px">
+                    Controle automático de ganho
+                  </div>
+                  <div style="color: #b8a693; font-size: 13px">
+                    Mantém sua voz num volume constante.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked="true"
+                  aria-label="Controle automático de ganho"
+                  style="
+                    width: 44px;
+                    height: 24px;
+                    flex: none;
+                    border: none;
+                    border-radius: 12px;
+                    background: #f0782a;
+                    position: relative;
+                    padding: 0;
+                  "
+                >
+                  <span
+                    style="
+                      position: absolute;
+                      top: 3px;
+                      right: 3px;
+                      width: 18px;
+                      height: 18px;
+                      border-radius: 50%;
+                      background: #fff;
+                    "
+                  ></span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <button
+              type="button"
+              aria-label="Fechar configurações"
+              style="
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                border: 2px solid #b8a693;
+                background: transparent;
+                color: #b8a693;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              "
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 6l12 12M18 6L6 18"></path>
+              </svg>
+            </button>
+            <div
+              style="
+                color: #b8a693;
+                font-size: 12px;
+                font-weight: 700;
+                text-align: center;
+                margin-top: 6px;
+              "
+            >
+              ESC
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+# Domains and e-mail come from infra/.env (passed in by docker-compose.yml).
+{
+	email {$ACME_EMAIL}
+
+	servers :443 {
+		# UDP 443 isn't open in the firewall, so don't advertise HTTP/3.
+		protocols h1 h2
+
+		listener_wrappers {
+			# TURN/TLS shares 443 with HTTPS: connections for the TURN domain are
+			# decrypted here and handed to LiveKit's TURN listener in plain TCP
+			# (livekit.yaml: external_tls), with a PROXY header carrying the client IP.
+			# Everything else falls through to the HTTP server below.
+			layer4 {
+				@turn tls sni {$TURN_DOMAIN}
+				route @turn {
+					tls
+					proxy {
+						proxy_protocol v2
+						upstream tcp/127.0.0.1:5349
+					}
+				}
+			}
+			tls
+		}
+	}
+}
+
+# API + WebSocket gateway
+{$API_DOMAIN} {
+	reverse_proxy 127.0.0.1:3000
+}
+
+# LiveKit signaling (WSS) and server API
+{$LIVEKIT_DOMAIN} {
+	reverse_proxy 127.0.0.1:7880
+}
+
+# Only so Caddy obtains and renews the certificate the layer4 route above uses.
+{$TURN_DOMAIN} {
+	respond 404
+}
