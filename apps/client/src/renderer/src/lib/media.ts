@@ -33,7 +33,8 @@ export function audioCaptureOptions(s: Settings): AudioCaptureOptions {
   return {
     deviceId: s.inputDeviceId,
     echoCancellation: s.echoCancellation,
-    noiseSuppression: s.noiseSuppression,
+    // With RNNoise on, Chromium's filter would only stack a second pass on top.
+    noiseSuppression: s.noiseSuppression === 'browser',
     autoGainControl: s.autoGainControl,
   };
 }

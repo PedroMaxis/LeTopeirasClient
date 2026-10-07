@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PushToTalkStatus } from '../../../../shared/ipc';
 import { errorMessage } from '../../lib/api';
 import { levelFromDb, startMicMeter } from '../../lib/audio';
-import { settings, updateSettings } from '../../lib/settings';
+import { settings, updateSettings, type Settings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { showToast } from '../../lib/toast';
 import { FieldLabel, ToggleRow } from '../ui/controls';
@@ -114,9 +114,10 @@ function MicTest() {
           gain: s.inputVolume / 100,
           constraints: {
             echoCancellation: s.echoCancellation,
-            noiseSuppression: s.noiseSuppression,
+            noiseSuppression: s.noiseSuppression === 'browser',
             autoGainControl: s.autoGainControl,
           },
+          rnnoise: s.noiseSuppression === 'rnnoise',
         },
         setLevel,
       );
@@ -150,6 +151,14 @@ function MicTest() {
     </div>
   );
 }
+
+type NoiseSuppression = Settings['noiseSuppression'];
+
+const NOISE_HINTS: Record<NoiseSuppression, string> = {
+  off: 'Seu microfone vai como está.',
+  browser: 'Tira chiado constante, como ventilador e ar-condicionado.',
+  rnnoise: 'Também tira teclado, cliques e barulhos de fundo. Usa um pouco mais de CPU.',
+};
 
 type InputMode = 'auto' | 'gate' | 'ptt';
 
@@ -321,17 +330,25 @@ export function VoiceSettings() {
           onChange={(echoCancellation) => updateSettings({ echoCancellation })}
         />
         <ToggleRow
-          label="Supressão de ruído"
-          description="Tira teclado mecânico, ventilador e barulho de fundo."
-          checked={s.noiseSuppression}
-          onChange={(noiseSuppression) => updateSettings({ noiseSuppression })}
-        />
-        <ToggleRow
           label="Controle automático de ganho"
           description="Mantém sua voz num volume constante."
           checked={s.autoGainControl}
           onChange={(autoGainControl) => updateSettings({ autoGainControl })}
         />
+      </div>
+      <div className="field">
+        <FieldLabel htmlFor="noise-suppression">SUPRESSÃO DE RUÍDO</FieldLabel>
+        <select
+          id="noise-suppression"
+          className="select"
+          value={s.noiseSuppression}
+          onChange={(e) => updateSettings({ noiseSuppression: e.target.value as NoiseSuppression })}
+        >
+          <option value="off">Desligada</option>
+          <option value="browser">Padrão</option>
+          <option value="rnnoise">Avançada (RNNoise)</option>
+        </select>
+        <span className="field-hint">{NOISE_HINTS[s.noiseSuppression]}</span>
       </div>
     </>
   );

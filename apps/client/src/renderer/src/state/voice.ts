@@ -14,6 +14,7 @@ import {
 } from 'livekit-client';
 import { errorMessage, type Api } from '../lib/api';
 import { MicProcessor, type MicOptions } from '../lib/audio';
+import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
   applyShareMode,
   audioCaptureOptions,
@@ -428,13 +429,15 @@ export class VoiceClient {
       gateDb: s.voiceGate && !s.pushToTalk ? s.voiceGateThreshold : null,
       // Without a key yet the mic stays closed, which is what "push to talk" promises.
       pushToTalk: s.pushToTalk,
+      rnnoise: s.noiseSuppression === 'rnnoise',
     };
     if (this.micProcessor && track.getProcessor() === this.micProcessor) {
       this.micProcessor.setOptions(options);
       return;
     }
-    if (options.gain === 1 && options.gateDb === null && !options.pushToTalk) return;
-    this.audioContext ??= new AudioContext();
+    if (options.gain === 1 && options.gateDb === null && !options.pushToTalk && !options.rnnoise)
+      return;
+    this.audioContext ??= new AudioContext({ sampleRate: NOISE_SAMPLE_RATE });
     track.setAudioContext(this.audioContext);
     this.micProcessor = new MicProcessor(options);
     this.micProcessor.setPushToTalkDown(this.pttDown);
@@ -463,7 +466,8 @@ export class VoiceClient {
       prev.inputVolume !== next.inputVolume ||
       prev.voiceGate !== next.voiceGate ||
       prev.voiceGateThreshold !== next.voiceGateThreshold ||
-      prev.pushToTalk !== next.pushToTalk
+      prev.pushToTalk !== next.pushToTalk ||
+      prev.noiseSuppression !== next.noiseSuppression
     ) {
       await this.applyMicProcessing(next);
     }

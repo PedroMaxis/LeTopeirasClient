@@ -11,7 +11,14 @@ const settingsSchema = z.object({
   inputVolume: z.number().min(0).max(200).default(100),
   outputVolume: z.number().min(0).max(100).default(100),
   echoCancellation: z.boolean().default(true),
-  noiseSuppression: z.boolean().default(true),
+  /** 'browser' is Chromium's built-in filter; 'rnnoise' replaces it with RNNoise (lib/noise.ts). */
+  noiseSuppression: z
+    // Older versions stored a boolean.
+    .preprocess(
+      (v) => (typeof v === 'boolean' ? (v ? 'browser' : 'off') : v),
+      z.enum(['off', 'browser', 'rnnoise']),
+    )
+    .default('browser'),
   autoGainControl: z.boolean().default(true),
   showMembers: z.boolean().default(true),
   /** Voice gate: below this level (dBFS) the mic sends silence. Off = the browser decides. */
