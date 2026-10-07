@@ -1,0 +1,38 @@
+name: Release
+
+# Push a tag matching the client version (apps/client/package.json), e.g.:
+#   git tag v0.1.0 && git push origin v0.1.0
+# The installer and latest.yml are published to GitHub Releases, where the
+# installed apps pick them up (electron-updater).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish Windows release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check the tag matches the client version
+        shell: bash
+        run: |
+          version=$(node -p "require('./apps/client/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match apps/client/package.json version $version"
+            exit 1
+          fi
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @letopeiras/client release:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

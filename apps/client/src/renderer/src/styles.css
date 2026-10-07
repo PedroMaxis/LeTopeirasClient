@@ -2416,12 +2416,17 @@ button.tag-chip:hover {
   border-left-color: var(--accent);
 }
 
-.toast button {
+.toast button:not(.button) {
   border: none;
   background: none;
   color: var(--text-muted);
   display: flex;
   padding: 2px;
+}
+
+.toast.update .button {
+  height: 32px;
+  padding: 0 14px;
 }
 
 /* ---------------------------------------------------------------- debug */

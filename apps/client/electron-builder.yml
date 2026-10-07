@@ -26,4 +26,9 @@ nsis:
   createDesktopShortcut: always
   shortcutName: LeTopeiras Client
 npmRebuild: false
-publish: null
+# Auto-update feed (electron-updater) and where `--publish always` uploads releases.
+publish:
+  provider: github
+  owner: PedroMaxis
+  repo: LeTopeirasClient
+  releaseType: release

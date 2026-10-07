@@ -1,7 +1,7 @@
 {
   "name": "@letopeiras/client",
   "productName": "LeTopeiras Client",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "LeTopeiras Client",
   "author": "LeTopeiras",
@@ -11,7 +11,8 @@
     "build": "electron-vite build",
     "preview": "install-electron && electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
-    "dist:win": "pnpm --filter @letopeiras/audio-capture ensure && electron-vite build && electron-builder --win --publish never"
+    "dist:win": "pnpm --filter @letopeiras/audio-capture ensure && electron-vite build && electron-builder --win --publish never",
+    "release:win": "pnpm --filter @letopeiras/audio-capture ensure && electron-vite build && electron-builder --win --publish always"
   },
   "devDependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
@@ -22,6 +23,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "electron": "^44.5.1",
     "electron-builder": "^26.15.3",
+    "electron-updater": "^6.8.9",
     "electron-vite": "^5.0.0",
     "livekit-client": "^2.22.3",
     "react": "^19.3.0",

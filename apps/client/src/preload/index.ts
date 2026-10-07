@@ -18,6 +18,13 @@ const api: LeTopeirasApi = {
   getSystemAudioStatus: () => ipcRenderer.invoke(IpcChannel.SystemAudioStatus),
   startSystemAudio: (sourceId) => ipcRenderer.invoke(IpcChannel.SystemAudioStart, sourceId),
   stopSystemAudio: () => ipcRenderer.invoke(IpcChannel.SystemAudioStop),
+  getReadyUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateGetReady),
+  onUpdateReady: (listener) => {
+    const handler = (_event: unknown, version: string) => listener(version);
+    ipcRenderer.on(IpcChannel.UpdateReady, handler);
+    return () => ipcRenderer.off(IpcChannel.UpdateReady, handler);
+  },
+  installUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateInstall),
 };
 
 // The preload is type-checked without DOM types; this is the one window API it uses.

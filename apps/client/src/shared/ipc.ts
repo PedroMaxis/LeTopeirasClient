@@ -19,6 +19,10 @@ export const IpcChannel = {
   SystemAudioStop: 'system-audio:stop',
   /** main → renderer: carries the MessagePort with the PCM blocks. */
   SystemAudioPort: 'system-audio:port',
+  UpdateGetReady: 'update:get-ready',
+  UpdateInstall: 'update:install',
+  /** main → renderer: an update finished downloading (payload: version). */
+  UpdateReady: 'update:ready',
 } as const;
 
 /** `window.postMessage` tag the preload uses to hand the PCM port to the page. */
@@ -80,4 +84,11 @@ export interface LeTopeirasApi {
    */
   startSystemAudio(sourceId: string): Promise<SystemAudioStart>;
   stopSystemAudio(): Promise<void>;
+
+  /** Version of an update that is downloaded and waiting for a restart, or null. */
+  getReadyUpdate(): Promise<string | null>;
+  /** Called when an update finishes downloading. Returns an unsubscribe function. */
+  onUpdateReady(listener: (version: string) => void): () => void;
+  /** Restarts the app into the downloaded update. */
+  installUpdate(): Promise<void>;
 }

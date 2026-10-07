@@ -9,6 +9,7 @@ import { registerScreenCapture } from './screen-capture';
 import { registerSessionStore } from './session-store';
 import { registerSystemAudio } from './system-audio';
 import { createTray, showWindow } from './tray';
+import { registerUpdater } from './updater';
 
 // Remote voices must play as soon as they arrive, without waiting for a click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -141,6 +142,7 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc(() => mainWindow);
     mainWindow = createMainWindow();
     createTray(mainWindow, () => app.quit());
+    registerUpdater(() => mainWindow);
   });
 
   app.on('window-all-closed', () => app.quit());
