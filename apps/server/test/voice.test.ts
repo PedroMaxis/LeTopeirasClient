@@ -37,6 +37,15 @@ describe('POST /voice/token', () => {
     });
   });
 
+  it('expires within minutes, so a kept token stops working soon after losing access', async () => {
+    const member = await t.register('maria');
+    const body = voiceTokenResponseSchema.parse((await requestToken(member.token, 2)).json());
+    const claims = await new TokenVerifier(apiKey, apiSecret).verify(body.token);
+    const ttlSeconds = (claims.exp ?? 0) - (claims.nbf ?? 0);
+    expect(ttlSeconds).toBeGreaterThan(0);
+    expect(ttlSeconds).toBeLessThanOrEqual(10 * 60);
+  });
+
   it('only works for existing voice channels', async () => {
     const { token } = await t.login('admin');
     expect((await requestToken(token, 1)).json().error.code).toBe('not_voice_channel');
@@ -110,6 +119,38 @@ describe('POST /livekit/webhook', () => {
     await signedWebhook(joined('other', String(member.user.id)));
     expect(await ws.receives('voice.state')).toBe(false);
     expect(t.app.ctx.voice.all()).toEqual([]);
+    ws.close();
+  });
+
+  it('drops joins and screen shares from people without access to the channel', async () => {
+    const member = await t.register('maria');
+    const { token: adminToken } = await t.login('admin');
+    const ws = await connect(t.app, adminToken);
+    // Private with no tags: only admins may be in it.
+    const res = await t.app.inject({
+      method: 'PATCH',
+      url: '/channels/2',
+      headers: bearer(adminToken),
+      payload: { isPrivate: true },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const identity = String(member.user.id);
+    expect((await signedWebhook(joined('voice:2', identity))).statusCode).toBe(200);
+    await signedWebhook({
+      event: 'track_published',
+      room: { name: 'voice:2' },
+      participant: { identity },
+      track: { source: 'SCREEN_SHARE' },
+    });
+    expect(await ws.receives('voice.state')).toBe(false);
+    expect(t.app.ctx.voice.all()).toEqual([]);
+
+    // The admin still gets in.
+    await signedWebhook(joined('voice:2', String(t.admin.id)));
+    expect((await ws.next('voice.state')).data.participants.map((p) => p.userId)).toEqual([
+      t.admin.id,
+    ]);
     ws.close();
   });
 

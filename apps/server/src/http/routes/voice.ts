@@ -4,7 +4,12 @@ import type { WebhookEvent } from 'livekit-server-sdk';
 import { badRequest, unauthorized } from '../../lib/errors';
 import { parse } from '../../lib/validate';
 import { requireAccess } from '../../services/access';
-import { applyWebhookEvent, createVoiceToken, voiceFilter } from '../../services/livekit';
+import {
+  applyWebhookEvent,
+  createVoiceToken,
+  removeFromVoice,
+  voiceFilter,
+} from '../../services/livekit';
 import { getAuth, requireAuth, type AppContext } from '../context';
 
 export function voiceRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -43,7 +48,14 @@ export function voiceRoutes(app: FastifyInstance, ctx: AppContext): void {
       } catch {
         throw unauthorized('Assinatura do webhook inválida');
       }
-      gateway.broadcastVoice(applyWebhookEvent(voice, event, filter));
+      const { changed, denied } = applyWebhookEvent(voice, event, filter);
+      gateway.broadcastVoice(changed);
+      if (denied) {
+        request.log.warn(denied, 'Removing participant without access from voice room');
+        removeFromVoice(config.livekit, denied.channelId, denied.userId).catch((err: unknown) =>
+          request.log.warn({ err, ...denied }, 'Could not remove participant from voice room'),
+        );
+      }
       return reply.status(200).send();
     });
   });

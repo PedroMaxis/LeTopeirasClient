@@ -11,11 +11,14 @@ import type { ServerConfig } from '../config';
 import type { Db } from '../db';
 import { findChannel } from '../repo/channels';
 import { findUserById } from '../repo/users';
+import { canAccess } from './access';
 import type { VoiceStateStore } from './voice-state';
 
 type LiveKitConfig = ServerConfig['livekit'];
 
-const VOICE_TOKEN_TTL = '6h';
+// Only needs to last until the client joins: LiveKit hands connected participants fresh
+// tokens itself. Short, so a token kept after losing access (or logging out) is useless.
+const VOICE_TOKEN_TTL = '10m';
 
 export async function createVoiceToken(
   config: LiveKitConfig,
@@ -56,40 +59,65 @@ const parseUserId = (identity: string | undefined): number | null => {
 export interface VoiceFilter {
   isKnownUser: (userId: number) => boolean;
   isVoiceChannel: (channelId: number) => boolean;
+  /** Whether the user may be in that voice channel right now (private channels). */
+  canJoin: (userId: number, channelId: number) => boolean;
 }
 
 export const voiceFilter = (db: Db): VoiceFilter => ({
   isKnownUser: (userId) => findUserById(db, userId) !== undefined,
   isVoiceChannel: (channelId) => findChannel(db, channelId)?.type === 'voice',
+  canJoin: (userId, channelId) => {
+    const user = findUserById(db, userId);
+    const channel = findChannel(db, channelId);
+    return user !== undefined && channel !== undefined && canAccess(user, channel);
+  },
 });
 
-/** Applies a LiveKit webhook to the voice state. Returns the channel ids whose state changed. */
+/** Someone in a LiveKit room they may not be in (a still-valid token used after losing access). */
+export interface DeniedParticipant {
+  channelId: number;
+  userId: number;
+}
+
+/**
+ * Applies a LiveKit webhook to the voice state. Returns the channel ids whose state changed,
+ * and who joined a room without access (the caller removes them from LiveKit).
+ */
 export function applyWebhookEvent(
   store: VoiceStateStore,
   event: WebhookEvent,
   filter: VoiceFilter,
-): number[] {
+): { changed: number[]; denied?: DeniedParticipant } {
   const channelId = event.room ? parseVoiceRoomName(event.room.name) : null;
-  if (channelId === null) return [];
+  if (channelId === null) return { changed: [] };
 
-  if (event.event === 'room_finished') return store.clearChannel(channelId);
-  if (!filter.isVoiceChannel(channelId)) return [];
+  if (event.event === 'room_finished') return { changed: store.clearChannel(channelId) };
+  if (!filter.isVoiceChannel(channelId)) return { changed: [] };
 
   const userId = parseUserId(event.participant?.identity);
-  if (userId === null || !filter.isKnownUser(userId)) return [];
+  if (userId === null || !filter.isKnownUser(userId)) return { changed: [] };
+
+  // Joins and track events (which can arrive first and count as a join) from someone
+  // without access are dropped, and the caller kicks them.
+  const entering = event.event === 'participant_joined' || event.event === 'track_published';
+  if (entering && !filter.canJoin(userId, channelId)) {
+    return { changed: [], denied: { channelId, userId } };
+  }
 
   switch (event.event) {
     case 'participant_joined':
-      return store.join(channelId, userId);
+      return { changed: store.join(channelId, userId) };
     case 'participant_left':
     case 'participant_connection_aborted':
-      return store.leave(channelId, userId);
+      return { changed: store.leave(channelId, userId) };
     case 'track_published':
     case 'track_unpublished':
-      if (event.track?.source !== TrackSource.SCREEN_SHARE) return [];
-      return store.setScreenSharing(channelId, userId, event.event === 'track_published');
+      if (event.track?.source !== TrackSource.SCREEN_SHARE) return { changed: [] };
+      return {
+        changed: store.setScreenSharing(channelId, userId, event.event === 'track_published'),
+      };
     default:
-      return [];
+      return { changed: [] };
   }
 }
 
@@ -98,7 +126,8 @@ const isScreenSharing = (participant: ParticipantInfo) =>
 
 /**
  * Rebuilds the voice state from the LiveKit API, e.g. after a server restart where
- * webhooks were missed. Returns the channel ids that were touched.
+ * webhooks were missed, removing anyone in a room they no longer have access to.
+ * Returns the channel ids that were touched.
  */
 export async function syncVoiceState(
   config: LiveKitConfig,
@@ -114,8 +143,11 @@ export async function syncVoiceState(
     const members = new Map<number, { screenSharing: boolean }>();
     for (const participant of await client.listParticipants(room.name)) {
       const userId = parseUserId(participant.identity);
-      if (userId !== null && filter.isKnownUser(userId)) {
+      if (userId === null || !filter.isKnownUser(userId)) continue;
+      if (filter.canJoin(userId, channelId)) {
         members.set(userId, { screenSharing: isScreenSharing(participant) });
+      } else {
+        await client.removeParticipant(room.name, participant.identity);
       }
     }
     snapshot.set(channelId, members);
