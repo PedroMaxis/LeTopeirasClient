@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/cli/create-admin.ts'],
+  entry: ['src/index.ts', 'src/cli/create-admin.ts', 'src/cli/backup.ts'],
   format: 'esm',
   platform: 'node',
   target: 'node24',
