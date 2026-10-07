@@ -116,7 +116,9 @@ function createMainWindow(): BrowserWindow {
   return win;
 }
 
-app.setAppUserModelId(APP_ID);
+// Windows caches the taskbar icon per AppUserModelID. In dev the process is electron.exe,
+// so sharing the installed app's ID would make its taskbar button show Electron's icon.
+app.setAppUserModelId(app.isPackaged ? APP_ID : `${APP_ID}.dev`);
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
