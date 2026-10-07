@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clientEventSchema, WsCloseCode } from '@letopeiras/shared';
-import { bearer, connect, createTestApp, type TestSocket } from './helpers';
+import { bearer, connect, createTestApp, testConfig, type TestSocket } from './helpers';
 
 let t: Awaited<ReturnType<typeof createTestApp>>;
 const sockets: TestSocket[] = [];
@@ -177,6 +177,59 @@ describe('chat', () => {
       code: 'rate_limited',
       ref: 'message.send',
     });
+  });
+
+  it('shares the message budget between sending, editing and deleting', async () => {
+    const maria = await t.register('maria');
+    const ws = await open(maria.token);
+    ws.send({ type: 'message.send', data: { channelId: 1, content: 'original' } });
+    const { message } = (await ws.next('message.created')).data;
+    for (let i = 0; i < 10; i++) {
+      ws.send({ type: 'message.edit', data: { messageId: message.id, content: `edit ${i}` } });
+    }
+    expect((await ws.next('error')).data).toMatchObject({
+      code: 'rate_limited',
+      ref: 'message.edit',
+    });
+  });
+
+  it('rate limits the other events too', async () => {
+    const maria = await t.register('maria');
+    const ws = await open(maria.token);
+    for (let i = 0; i < 61; i++) {
+      ws.send({ type: 'presence.update', data: { status: i % 2 ? 'online' : 'idle' } });
+    }
+    expect((await ws.next('error')).data).toMatchObject({
+      code: 'rate_limited',
+      ref: 'presence.update',
+    });
+  });
+
+  it('limits sockets per IP that have not authenticated yet', async () => {
+    const pending = await Promise.all(Array.from({ length: 10 }, () => connect(t.app)));
+    const extra = await connect(t.app);
+    expect(await extra.closed).toBe(WsCloseCode.TooManyConnections);
+
+    // Authenticating frees the slot.
+    const { token } = await t.login('admin');
+    pending[0]?.send({ type: 'auth', data: { token } });
+    await pending[0]?.next('ready');
+    const next = await connect(t.app, token);
+    expect(next.ready?.user.id).toBe(t.admin.id);
+    for (const socket of [...pending, next]) socket.close();
+  });
+
+  it('closes sockets once their session expires', async () => {
+    const maria = await t.register('maria');
+    const ws = await open(maria.token);
+
+    // Still valid: the socket keeps working.
+    t.app.ctx.gateway.closeExpiredSessions();
+    ws.send({ type: 'message.send', data: { channelId: 1, content: 'ainda aqui' } });
+    await ws.next('message.created');
+
+    t.app.ctx.gateway.closeExpiredSessions(Date.now() + testConfig.sessionTtlMs + 1000);
+    expect(await ws.closed).toBe(WsCloseCode.Unauthorized);
   });
 
   it('broadcasts typing to everyone else, throttled', async () => {

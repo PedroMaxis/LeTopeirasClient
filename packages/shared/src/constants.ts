@@ -62,4 +62,6 @@ export const WsCloseCode = {
   AuthTimeout: 4002,
   SessionRevoked: 4003,
   InvalidMessage: 4004,
+  /** Too many sockets from one IP still waiting to authenticate; the client retries later. */
+  TooManyConnections: 4005,
 } as const;

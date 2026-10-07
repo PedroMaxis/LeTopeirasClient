@@ -32,12 +32,16 @@ import type { VoiceStateStore } from '../services/voice-state';
 
 const AUTH_TIMEOUT_MS = 10_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
+/** Sockets per IP that haven't sent `auth` yet. */
+const MAX_PENDING_PER_IP = 10;
 
 interface Connection {
   socket: WebSocket;
   /** Refreshed when the user's tags or name change. */
   user: User;
   sessionId: number;
+  /** The socket is closed once its session expires. */
+  sessionExpiresAt: number;
   alive: boolean;
   status: 'online' | 'idle';
 }
@@ -55,25 +59,48 @@ export interface GatewayDeps {
  */
 export class Gateway {
   private readonly byUser = new Map<number, Set<Connection>>();
+  private readonly pendingByIp = new Map<string, number>();
+  // Sending, editing and deleting messages share one budget per user.
   private readonly messageLimiter = new RateLimiter(10, 10_000);
+  // Every other event (read markers, presence, voice state…) per user.
+  private readonly eventLimiter = new RateLimiter(60, 10_000);
   // At most one typing broadcast per user and channel every 3 s.
   private readonly typingLimiter = new RateLimiter(1, 3_000);
   private readonly heartbeat: NodeJS.Timeout;
 
   constructor(private readonly deps: GatewayDeps) {
-    this.heartbeat = setInterval(() => this.checkAlive(), HEARTBEAT_INTERVAL_MS);
+    this.heartbeat = setInterval(() => {
+      this.closeExpiredSessions();
+      this.checkAlive();
+    }, HEARTBEAT_INTERVAL_MS);
     this.heartbeat.unref();
   }
 
-  /** Takes over a freshly opened socket. The first frame must be `auth`. */
-  accept(socket: WebSocket): void {
+  /** Takes over a freshly opened socket from `ip`. The first frame must be `auth`. */
+  accept(socket: WebSocket, ip: string): void {
+    const pending = this.pendingByIp.get(ip) ?? 0;
+    if (pending >= MAX_PENDING_PER_IP) {
+      socket.close(WsCloseCode.TooManyConnections, 'Too many connections');
+      return;
+    }
+    this.pendingByIp.set(ip, pending + 1);
+    let settled = false;
+    const settle = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      const left = (this.pendingByIp.get(ip) ?? 1) - 1;
+      if (left > 0) this.pendingByIp.set(ip, left);
+      else this.pendingByIp.delete(ip);
+    };
+
     const timeout = setTimeout(
       () => socket.close(WsCloseCode.AuthTimeout, 'Auth timeout'),
       AUTH_TIMEOUT_MS,
     );
-    socket.once('close', () => clearTimeout(timeout));
+    socket.once('close', settle);
     socket.once('message', (raw, isBinary) => {
-      clearTimeout(timeout);
+      settle();
       const event = isBinary ? undefined : parseEvent(raw.toString());
       if (event?.type !== 'auth') {
         socket.close(WsCloseCode.InvalidMessage, 'Expected auth');
@@ -88,6 +115,7 @@ export class Gateway {
         socket,
         user: auth.user,
         sessionId: auth.session.id,
+        sessionExpiresAt: auth.session.expiresAt,
         alive: true,
         status: 'online',
       });
@@ -174,6 +202,15 @@ export class Gateway {
     for (const conn of this.byUser.get(userId) ?? []) {
       if (conn.sessionId !== keepSessionId) {
         conn.socket.close(WsCloseCode.SessionRevoked, 'Password changed');
+      }
+    }
+  }
+
+  /** Closes sockets whose session has expired (the token was only checked at `auth`). */
+  closeExpiredSessions(now = Date.now()): void {
+    for (const conn of this.connections()) {
+      if (conn.sessionExpiresAt <= now) {
+        conn.socket.close(WsCloseCode.Unauthorized, 'Session expired');
       }
     }
   }
@@ -274,12 +311,18 @@ export class Gateway {
     const { db, voice } = this.deps;
     const { user } = conn;
 
+    const isMessageEvent =
+      event.type === 'message.send' ||
+      event.type === 'message.edit' ||
+      event.type === 'message.delete';
+    const limiter = isMessageEvent ? this.messageLimiter : this.eventLimiter;
+    if (!limiter.consume(String(user.id))) throw tooManyRequests();
+
     switch (event.type) {
       case 'auth':
         throw new AppError(400, 'already_authenticated', 'Já autenticado');
 
       case 'message.send': {
-        if (!this.messageLimiter.consume(String(user.id))) throw tooManyRequests();
         const { channelId, content, nonce } = event.data;
         const message = sendMessage(db, user, channelId, content);
         this.broadcastToChannel(requireTextChannel(db, user, channelId), {

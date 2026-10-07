@@ -61,7 +61,7 @@ export function buildApp({ config, db, ...fastifyOptions }: AppOptions) {
   });
 
   app.register(async (scope) => {
-    scope.get('/ws', { websocket: true }, (socket) => gateway.accept(socket));
+    scope.get('/ws', { websocket: true }, (socket, request) => gateway.accept(socket, request.ip));
     authRoutes(scope, ctx);
     channelRoutes(scope, ctx);
     userRoutes(scope, ctx);
