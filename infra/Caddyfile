@@ -1,6 +1,9 @@
 # Domains and e-mail come from infra/.env (passed in by docker-compose.yml).
 {
 	email {$ACME_EMAIL}
+	# No admin API: config only changes by restarting the container, and no local
+	# process (everything shares the host network) can reconfigure the proxy.
+	admin off
 
 	servers :443 {
 		# UDP 443 isn't open in the firewall, so don't advertise HTTP/3.
