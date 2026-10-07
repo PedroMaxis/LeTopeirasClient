@@ -32,6 +32,11 @@ export class AudioMixer {
     this.remove(id);
     const { context, master } = this.ensure();
     keeper.muted = true;
+    // Something unmuting the keeper (e.g. LiveKit's Room.startAudio) would play the track a
+    // second time, bypassing per-user volume and deafen.
+    keeper.addEventListener('volumechange', () => {
+      if (!keeper.muted) keeper.muted = true;
+    });
     const source = context.createMediaStreamSource(new MediaStream([track]));
     const gainNode = context.createGain();
     gainNode.gain.value = gain;

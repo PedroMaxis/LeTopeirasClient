@@ -144,7 +144,8 @@ export class VoiceClient {
 
     this.store.set({ room, status: 'connected' });
     if (attempt === 0) playSound('join');
-    await room.startAudio();
+    // No room.startAudio(): Electron doesn't block autoplay, and startAudio unmutes every
+    // attached element, which would play voices a second time outside the mixer.
     await this.mixer.setSinkId(settings.get().outputDeviceId);
     await this.syncMicrophone();
     this.applyOutput();
