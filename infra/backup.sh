@@ -12,7 +12,7 @@ tmp="/data/backup-tmp.db"
 
 mkdir -p "$BACKUP_DIR"
 docker compose exec -T server node dist/cli/backup.mjs "$tmp" >/dev/null
-docker compose cp "server:$tmp" "$BACKUP_DIR/$name" >/dev/null
+docker compose cp "server:$tmp" "$BACKUP_DIR/$name" >/dev/null 2>&1
 docker compose exec -T server rm -f "$tmp"
 gzip -f "$BACKUP_DIR/$name"
 
