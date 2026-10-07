@@ -31,4 +31,5 @@ publish:
   provider: github
   owner: PedroMaxis
   repo: LeTopeirasClient
-  releaseType: release
+  # The Release workflow creates the draft first and publishes it once every file is up.
+  releaseType: draft
