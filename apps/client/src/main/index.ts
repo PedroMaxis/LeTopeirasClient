@@ -5,6 +5,7 @@ import windowIconPath from '../../resources/tray.ico?asset';
 import { IpcChannel, type AppInfo } from '../shared/ipc';
 import { configurePermissions } from './permissions';
 import { assertTrustedSender, rendererDevUrl, rendererFile } from './renderer';
+import { registerPushToTalk } from './push-to-talk';
 import { registerScreenCapture } from './screen-capture';
 import { registerSessionStore } from './session-store';
 import { registerSystemAudio } from './system-audio';
@@ -139,6 +140,7 @@ if (!app.requestSingleInstanceLock()) {
     registerScreenCapture(session.defaultSession);
     registerSessionStore();
     registerSystemAudio();
+    registerPushToTalk();
     registerIpc(() => mainWindow);
     mainWindow = createMainWindow();
     createTray(mainWindow, () => app.quit());

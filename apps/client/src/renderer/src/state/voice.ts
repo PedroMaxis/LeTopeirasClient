@@ -98,6 +98,9 @@ export class VoiceClient {
   private audioContext: AudioContext | null = null;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
   private unsubscribeSettings: () => void;
+  private unsubscribePushToTalk: () => void;
+  /** Push-to-talk key state from main; kept here so a new mic processor starts in sync. */
+  private pttDown = false;
   private joinSeq = 0;
 
   constructor(
@@ -111,6 +114,10 @@ export class VoiceClient {
       const next = settings.get();
       void this.applySettings(previous, next);
       previous = next;
+    });
+    this.unsubscribePushToTalk = window.api.onPushToTalk((down) => {
+      this.pttDown = down;
+      this.micProcessor?.setPushToTalkDown(down);
     });
   }
 
@@ -148,6 +155,7 @@ export class VoiceClient {
     // attached element, which would play voices a second time outside the mixer.
     await this.mixer.setSinkId(settings.get().outputDeviceId);
     await this.syncMicrophone();
+    await this.syncPushToTalk(settings.get());
     this.applyOutput();
     this.reportState(this.state.muted, this.state.deafened);
     this.pingTimer = setInterval(() => {
@@ -272,6 +280,7 @@ export class VoiceClient {
 
   dispose(): void {
     this.unsubscribeSettings();
+    this.unsubscribePushToTalk();
     void this.leave();
     this.mixer.close();
     this.audioContainer.remove();
@@ -368,6 +377,7 @@ export class VoiceClient {
       sharingAudio: false,
       pingMs: null,
     });
+    void this.syncPushToTalk(settings.get());
   }
 
   private async afterSelfChange(): Promise<void> {
@@ -398,22 +408,36 @@ export class VoiceClient {
     return track instanceof LocalAudioTrack ? track : undefined;
   }
 
-  /** Input volume and voice gate; the processor is only inserted when something is set. */
+  /** Watches the push-to-talk key only while in a room with push-to-talk on. */
+  private async syncPushToTalk(s: Settings): Promise<void> {
+    if (this.state.room && s.pushToTalk && s.pttKey) {
+      await window.api.startPushToTalk(s.pttKey.vk);
+      return;
+    }
+    await window.api.stopPushToTalk();
+    this.pttDown = false;
+    this.micProcessor?.setPushToTalkDown(false);
+  }
+
+  /** Input volume, voice gate and push-to-talk; the processor is only inserted when needed. */
   private async applyMicProcessing(s: Settings): Promise<void> {
     const track = this.micTrack();
     if (!track) return;
     const options: MicOptions = {
       gain: s.inputVolume / 100,
-      gateDb: s.voiceGate ? s.voiceGateThreshold : null,
+      gateDb: s.voiceGate && !s.pushToTalk ? s.voiceGateThreshold : null,
+      // Without a key yet the mic stays closed, which is what "push to talk" promises.
+      pushToTalk: s.pushToTalk,
     };
     if (this.micProcessor && track.getProcessor() === this.micProcessor) {
       this.micProcessor.setOptions(options);
       return;
     }
-    if (options.gain === 1 && options.gateDb === null) return;
+    if (options.gain === 1 && options.gateDb === null && !options.pushToTalk) return;
     this.audioContext ??= new AudioContext();
     track.setAudioContext(this.audioContext);
     this.micProcessor = new MicProcessor(options);
+    this.micProcessor.setPushToTalkDown(this.pttDown);
     await track.setProcessor(this.micProcessor);
   }
 
@@ -438,9 +462,13 @@ export class VoiceClient {
     if (
       prev.inputVolume !== next.inputVolume ||
       prev.voiceGate !== next.voiceGate ||
-      prev.voiceGateThreshold !== next.voiceGateThreshold
+      prev.voiceGateThreshold !== next.voiceGateThreshold ||
+      prev.pushToTalk !== next.pushToTalk
     ) {
       await this.applyMicProcessing(next);
+    }
+    if (prev.pushToTalk !== next.pushToTalk || prev.pttKey !== next.pttKey) {
+      await this.syncPushToTalk(next);
     }
     if (prev.outputDeviceId !== next.outputDeviceId) {
       await this.mixer.setSinkId(next.outputDeviceId);

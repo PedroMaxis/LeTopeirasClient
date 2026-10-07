@@ -1810,6 +1810,34 @@ a:hover {
   min-width: 132px;
 }
 
+.ptt-key {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ptt-key-name {
+  flex: 1;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-head);
+  font-weight: 600;
+}
+
+.ptt-key-name.empty {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.ptt-key .button {
+  height: 36px;
+  min-width: 132px;
+}
+
 .meter {
   flex: 1;
   display: flex;
@@ -2146,6 +2174,11 @@ button.tag-chip:hover {
 
 .radio-row.selected {
   background: var(--bg-sel);
+}
+
+.radio-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .radio-dot {

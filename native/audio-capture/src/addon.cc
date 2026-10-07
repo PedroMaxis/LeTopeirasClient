@@ -313,9 +313,56 @@ Napi::Value WindowProcessId(const Napi::CallbackInfo& info) {
   return Napi::Number::New(env, pid);
 }
 
+// Push-to-talk polls these from the main process. GetAsyncKeyState sees keys and mouse
+// buttons while other apps have focus (except elevated ones, which UIPI hides from us).
+bool ReadVirtualKey(const Napi::CallbackInfo& info, int* vk) {
+  if (info.Length() < 1 || !info[0].IsNumber()) return false;
+  *vk = info[0].As<Napi::Number>().Int32Value();
+  return *vk >= 1 && *vk <= 254;
+}
+
+// JS: isKeyDown(vk) -> boolean
+Napi::Value IsKeyDown(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  int vk = 0;
+  if (!ReadVirtualKey(info, &vk)) {
+    Napi::TypeError::New(env, "Expected a virtual-key code (1-254)").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  return Napi::Boolean::New(env, (GetAsyncKeyState(vk) & 0x8000) != 0);
+}
+
+// JS: keyName(vk) -> string ('' when the keyboard layout has no name for it)
+Napi::Value KeyName(const Napi::CallbackInfo& info) {
+  Napi::Env env = info.Env();
+  int vk = 0;
+  if (!ReadVirtualKey(info, &vk)) {
+    Napi::TypeError::New(env, "Expected a virtual-key code (1-254)").ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+  // Extended keys (arrows, Insert, right Ctrl/Alt...) need bit 24 set, or GetKeyNameText names
+  // the numpad key that shares the scan code. MAPVK_VK_TO_VSC_EX doesn't flag all of them.
+  UINT scan = MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_VSC_EX);
+  bool extended = (scan & 0xFF00) != 0;
+  switch (vk) {
+    case VK_PRIOR: case VK_NEXT: case VK_END: case VK_HOME:
+    case VK_LEFT: case VK_UP: case VK_RIGHT: case VK_DOWN:
+    case VK_SNAPSHOT: case VK_INSERT: case VK_DELETE: case VK_DIVIDE: case VK_NUMLOCK:
+    case VK_LWIN: case VK_RWIN: case VK_APPS: case VK_RCONTROL: case VK_RMENU:
+      extended = true;
+  }
+  LONG lParam = static_cast<LONG>((scan & 0xFF) << 16);
+  if (extended) lParam |= 1 << 24;
+  wchar_t name[64] = {};
+  int length = scan ? GetKeyNameTextW(lParam, name, 64) : 0;
+  return Napi::String::New(env, reinterpret_cast<const char16_t*>(name), length);
+}
+
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports.Set("AudioCapture", AudioCapture::Init(env));
   exports.Set("windowProcessId", Napi::Function::New(env, WindowProcessId));
+  exports.Set("isKeyDown", Napi::Function::New(env, IsKeyDown));
+  exports.Set("keyName", Napi::Function::New(env, KeyName));
   exports.Set("sampleRate", Napi::Number::New(env, kSampleRate));
   exports.Set("channels", Napi::Number::New(env, kChannels));
   exports.Set("blockFrames", Napi::Number::New(env, kBlockFrames));

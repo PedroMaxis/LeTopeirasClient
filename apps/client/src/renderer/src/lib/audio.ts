@@ -8,15 +8,20 @@ export interface MicOptions {
   gain: number;
   /** Voice gate threshold in dBFS, or null to send everything. */
   gateDb: number | null;
+  /** Push-to-talk: only send while the key is held (see `setPushToTalkDown`). Overrides the gate. */
+  pushToTalk: boolean;
 }
 
 /** Keeps the gate open this long after the voice drops, so word endings aren't cut. */
 const GATE_HOLD_MS = 300;
 const GATE_POLL_MS = 20;
+/** Same idea for push-to-talk: keep sending briefly after the key is released. */
+const PTT_RELEASE_MS = 200;
 
 /**
  * Microphone processing through Web Audio: input volume (can amplify) and an optional
- * voice gate that sends silence while the level stays under the threshold.
+ * gate that sends silence while the level stays under the threshold, or while the
+ * push-to-talk key is up.
  */
 export class MicProcessor implements TrackProcessor<Track.Kind.Audio, AudioProcessorOptions> {
   readonly name = 'letopeiras-mic';
@@ -27,6 +32,8 @@ export class MicProcessor implements TrackProcessor<Track.Kind.Audio, AudioProce
   private analyser?: AnalyserNode;
   private timer: ReturnType<typeof setInterval> | undefined;
   private lastVoiceAt = 0;
+  private pttDown = false;
+  private pttReleasedAt = 0;
 
   constructor(private options: MicOptions) {}
 
@@ -66,11 +73,18 @@ export class MicProcessor implements TrackProcessor<Track.Kind.Audio, AudioProce
     if (this.gainNode) this.gainNode.gain.value = options.gain;
   }
 
+  setPushToTalkDown(down: boolean): void {
+    if (this.pttDown && !down) this.pttReleasedAt = performance.now();
+    this.pttDown = down;
+  }
+
   private updateGate(samples: Float32Array<ArrayBuffer>, context: BaseAudioContext): void {
     if (!this.analyser || !this.gateNode) return;
-    const { gateDb } = this.options;
+    const { gateDb, pushToTalk } = this.options;
     let open = true;
-    if (gateDb !== null) {
+    if (pushToTalk) {
+      open = this.pttDown || performance.now() - this.pttReleasedAt < PTT_RELEASE_MS;
+    } else if (gateDb !== null) {
       this.analyser.getFloatTimeDomainData(samples);
       let sum = 0;
       for (const s of samples) sum += s * s;

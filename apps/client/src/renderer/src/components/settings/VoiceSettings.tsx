@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { PushToTalkStatus } from '../../../../shared/ipc';
 import { errorMessage } from '../../lib/api';
 import { levelFromDb, startMicMeter } from '../../lib/audio';
 import { settings, updateSettings } from '../../lib/settings';
@@ -127,7 +128,7 @@ function MicTest() {
 
   const lit = Math.round((level ?? 0) * METER_SEGMENTS);
   // With the voice gate on, only the part above the threshold is "transmitting".
-  const gate = s.voiceGate ? levelFromDb(s.voiceGateThreshold) : null;
+  const gate = s.voiceGate && !s.pushToTalk ? levelFromDb(s.voiceGateThreshold) : null;
   const gateSegment = gate === null ? 0 : Math.round(gate * METER_SEGMENTS);
   return (
     <div className="field">
@@ -150,8 +151,89 @@ function MicTest() {
   );
 }
 
+type InputMode = 'auto' | 'gate' | 'ptt';
+
+const INPUT_MODES: { mode: InputMode; title: string; description: string }[] = [
+  {
+    mode: 'auto',
+    title: 'Detecção de voz automática',
+    description: 'O microfone transmite sempre; o navegador cuida do resto.',
+  },
+  {
+    mode: 'gate',
+    title: 'Limiar manual',
+    description: 'Só transmite quando sua voz passa da marca no medidor.',
+  },
+  {
+    mode: 'ptt',
+    title: 'Pressionar para falar',
+    description: 'Só transmite enquanto você segura a tecla, mesmo com o app em segundo plano.',
+  },
+];
+
+const MODE_SETTINGS: Record<InputMode, { voiceGate?: boolean; pushToTalk: boolean }> = {
+  auto: { voiceGate: false, pushToTalk: false },
+  gate: { voiceGate: true, pushToTalk: false },
+  ptt: { pushToTalk: true },
+};
+
+function usePushToTalkStatus(): PushToTalkStatus | null {
+  const [status, setStatus] = useState<PushToTalkStatus | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void window.api.getPushToTalkStatus().then((next) => !cancelled && setStatus(next));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return status;
+}
+
+function PushToTalkKeyField() {
+  const key = useStore(settings, (x) => x.pttKey);
+  const [recording, setRecording] = useState(false);
+
+  const record = async () => {
+    setRecording(true);
+    try {
+      const next = await window.api.recordPushToTalkKey();
+      if (next) updateSettings({ pttKey: next });
+    } finally {
+      setRecording(false);
+    }
+  };
+
+  return (
+    <div className="field">
+      <div className="field-label">TECLA DE ATALHO</div>
+      <div className="ptt-key">
+        <span className={`ptt-key-name ${key ? '' : 'empty'}`}>
+          {recording ? 'Aperte uma tecla ou botão do mouse…' : (key?.name ?? 'Nenhuma tecla')}
+        </span>
+        <button
+          type="button"
+          className="button primary"
+          disabled={recording}
+          onClick={() => void record()}
+        >
+          {key ? 'Trocar tecla' : 'Gravar tecla'}
+        </button>
+      </div>
+      <span className="field-hint">
+        {recording
+          ? 'Esc cancela.'
+          : key
+            ? 'Em jogos abertos como administrador, o atalho só funciona se o LeTopeiras também for.'
+            : 'Sem uma tecla, seu microfone fica fechado.'}
+      </span>
+    </div>
+  );
+}
+
 export function VoiceSettings() {
   const s = useStore(settings, (x) => x);
+  const pttStatus = usePushToTalkStatus();
+  const mode: InputMode = s.pushToTalk ? 'ptt' : s.voiceGate ? 'gate' : 'auto';
   return (
     <>
       <h2 className="settings-title">Voz e áudio</h2>
@@ -192,38 +274,32 @@ export function VoiceSettings() {
       <div className="field">
         <div className="field-label">MODO DE ENTRADA</div>
         <div className="radio-list" role="radiogroup">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={!s.voiceGate}
-            className={`radio-row ${!s.voiceGate ? 'selected' : ''}`}
-            onClick={() => updateSettings({ voiceGate: false })}
-          >
-            <span className="radio-dot" />
-            <span>
-              <span className="radio-title">Detecção de voz automática</span>
-              <span className="radio-description">
-                O microfone transmite sempre; o navegador cuida do resto.
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={s.voiceGate}
-            className={`radio-row ${s.voiceGate ? 'selected' : ''}`}
-            onClick={() => updateSettings({ voiceGate: true })}
-          >
-            <span className="radio-dot" />
-            <span>
-              <span className="radio-title">Limiar manual</span>
-              <span className="radio-description">
-                Só transmite quando sua voz passa da marca no medidor.
-              </span>
-            </span>
-          </button>
+          {INPUT_MODES.map((option) => {
+            const unavailable = option.mode === 'ptt' && pttStatus?.available === false;
+            return (
+              <button
+                key={option.mode}
+                type="button"
+                role="radio"
+                aria-checked={mode === option.mode}
+                className={`radio-row ${mode === option.mode ? 'selected' : ''}`}
+                disabled={unavailable}
+                onClick={() => updateSettings(MODE_SETTINGS[option.mode])}
+              >
+                <span className="radio-dot" />
+                <span>
+                  <span className="radio-title">{option.title}</span>
+                  <span className="radio-description">
+                    {unavailable && pttStatus?.available === false
+                      ? `Indisponível neste PC: ${pttStatus.reason}.`
+                      : option.description}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
-        {s.voiceGate && (
+        {mode === 'gate' && (
           <Slider
             id="gate-threshold"
             label="LIMIAR"
@@ -235,6 +311,7 @@ export function VoiceSettings() {
           />
         )}
       </div>
+      {mode === 'ptt' && <PushToTalkKeyField />}
       <div className="settings-divider" />
       <div className="toggle-list">
         <ToggleRow

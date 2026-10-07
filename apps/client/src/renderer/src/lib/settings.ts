@@ -17,6 +17,12 @@ const settingsSchema = z.object({
   /** Voice gate: below this level (dBFS) the mic sends silence. Off = the browser decides. */
   voiceGate: z.boolean().default(false),
   voiceGateThreshold: z.number().min(-100).max(0).default(-50),
+  /** Push-to-talk: the mic only sends while `pttKey` is held. Takes precedence over the gate. */
+  pushToTalk: z.boolean().default(false),
+  pttKey: z
+    .object({ vk: z.number().int().min(1).max(254), name: z.string() })
+    .nullable()
+    .default(null),
   defaultShareMode: z.enum(['motion', 'detail']).default('motion'),
   defaultShareQuality: z.enum(['720p30', '720p60', '1080p60']).default('1080p60'),
   sounds: z.boolean().default(true),

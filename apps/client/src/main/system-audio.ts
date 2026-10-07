@@ -1,36 +1,10 @@
-import { join } from 'node:path';
 import { app, ipcMain, MessageChannelMain, type MessagePortMain, type WebContents } from 'electron';
 import { z } from 'zod';
 import { IpcChannel, type SystemAudioStart, type SystemAudioStatus } from '../shared/ipc';
+import { loadNativeAddon } from './native';
 import { assertTrustedSender } from './renderer';
 
-/** Shape of native/audio-capture (src/addon.cc). */
-interface AudioCaptureAddon {
-  AudioCapture: new (
-    options: { pid: number; mode: 'include' | 'exclude' },
-    onData: (block: Float32Array) => void,
-  ) => { start(): void; stop(): void };
-  windowProcessId(hwnd: number): number;
-}
-
 const sourceIdSchema = z.string().regex(/^(screen|window):[\w:-]+$/);
-
-// Packaged builds ship the addon as an extra resource; dev loads it from the workspace.
-const addonPath = app.isPackaged
-  ? join(process.resourcesPath, 'audio_capture.node')
-  : join(app.getAppPath(), '../../native/audio-capture/build/Release/audio_capture.node');
-
-function loadAddon(): { addon: AudioCaptureAddon } | { error: string } {
-  if (process.platform !== 'win32') return { error: 'só funciona no Windows' };
-  try {
-    const module = { exports: {} as AudioCaptureAddon };
-    process.dlopen(module, addonPath);
-    return { addon: module.exports };
-  } catch (err) {
-    console.warn(`[system-audio] failed to load ${addonPath}:`, err);
-    return { error: 'o módulo de áudio não carregou' };
-  }
-}
 
 interface ActiveCapture {
   capture: { stop(): void };
@@ -53,7 +27,7 @@ function stopActive(): void {
  * captures everything except our own process tree (exclude mode), so call voices never echo.
  */
 export function registerSystemAudio(): void {
-  const loaded = loadAddon();
+  const loaded = loadNativeAddon();
   const status: SystemAudioStatus =
     'addon' in loaded ? { available: true } : { available: false, reason: loaded.error };
 

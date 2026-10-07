@@ -18,6 +18,15 @@ const api: LeTopeirasApi = {
   getSystemAudioStatus: () => ipcRenderer.invoke(IpcChannel.SystemAudioStatus),
   startSystemAudio: (sourceId) => ipcRenderer.invoke(IpcChannel.SystemAudioStart, sourceId),
   stopSystemAudio: () => ipcRenderer.invoke(IpcChannel.SystemAudioStop),
+  getPushToTalkStatus: () => ipcRenderer.invoke(IpcChannel.PushToTalkStatus),
+  startPushToTalk: (vk) => ipcRenderer.invoke(IpcChannel.PushToTalkStart, vk),
+  stopPushToTalk: () => ipcRenderer.invoke(IpcChannel.PushToTalkStop),
+  onPushToTalk: (listener) => {
+    const handler = (_event: unknown, down: boolean) => listener(down);
+    ipcRenderer.on(IpcChannel.PushToTalkState, handler);
+    return () => ipcRenderer.off(IpcChannel.PushToTalkState, handler);
+  },
+  recordPushToTalkKey: () => ipcRenderer.invoke(IpcChannel.PushToTalkRecordKey),
   getReadyUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateGetReady),
   onUpdateReady: (listener) => {
     const handler = (_event: unknown, version: string) => listener(version);

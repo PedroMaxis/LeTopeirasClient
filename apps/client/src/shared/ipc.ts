@@ -19,6 +19,12 @@ export const IpcChannel = {
   SystemAudioStop: 'system-audio:stop',
   /** main → renderer: carries the MessagePort with the PCM blocks. */
   SystemAudioPort: 'system-audio:port',
+  PushToTalkStatus: 'ptt:status',
+  PushToTalkStart: 'ptt:start',
+  PushToTalkStop: 'ptt:stop',
+  PushToTalkRecordKey: 'ptt:record-key',
+  /** main → renderer: the push-to-talk key went down (true) or up (false). */
+  PushToTalkState: 'ptt:state',
   UpdateGetReady: 'update:get-ready',
   UpdateInstall: 'update:install',
   /** main → renderer: an update finished downloading (payload: version). */
@@ -29,6 +35,15 @@ export const IpcChannel = {
 export const SYSTEM_AUDIO_PORT_MESSAGE = 'letopeiras:system-audio-port';
 
 export type SystemAudioStatus = { available: true } | { available: false; reason: string };
+
+/** Push-to-talk uses the same native addon, so it is unavailable in the same cases. */
+export type PushToTalkStatus = SystemAudioStatus;
+
+/** A push-to-talk key: Windows virtual-key code plus the name shown in settings. */
+export interface PushToTalkKey {
+  vk: number;
+  name: string;
+}
 
 export type SystemAudioStart =
   { ok: true; mode: 'include' | 'exclude' } | { ok: false; reason: string };
@@ -84,6 +99,19 @@ export interface LeTopeirasApi {
    */
   startSystemAudio(sourceId: string): Promise<SystemAudioStart>;
   stopSystemAudio(): Promise<void>;
+
+  /** Whether push-to-talk can watch keys outside the app (needs the native addon). */
+  getPushToTalkStatus(): Promise<PushToTalkStatus>;
+  /** Watches `vk` globally and reports every press and release to `onPushToTalk`. */
+  startPushToTalk(vk: number): Promise<void>;
+  stopPushToTalk(): Promise<void>;
+  /** Called when the push-to-talk key goes down or up. Returns an unsubscribe function. */
+  onPushToTalk(listener: (down: boolean) => void): () => void;
+  /**
+   * Waits for the next key or mouse button (left/right click excluded). Resolves null on
+   * Escape, after a timeout, or when another recording starts.
+   */
+  recordPushToTalkKey(): Promise<PushToTalkKey | null>;
 
   /** Version of an update that is downloaded and waiting for a restart, or null. */
   getReadyUpdate(): Promise<string | null>;
