@@ -83,13 +83,28 @@ export const screenAudioPublishOptions: TrackPublishOptions = {
   red: false,
 };
 
+/**
+ * Chromium only offers H.265 for WebRTC when the GPU can encode it (there is no software
+ * H.265 encoder), so its presence means a hardware encoder.
+ */
+function canEncodeH265(): boolean {
+  return (
+    RTCRtpSender.getCapabilities('video')?.codecs.some((c) => c.mimeType === 'video/H265') ?? false
+  );
+}
+
 export function screenPublishOptions(mode: ShareMode, quality: ShareQuality): TrackPublishOptions {
   const q = shareQualities[quality];
+  // H.264 always lands on the software encoder: LiveKit negotiates Constrained Baseline
+  // (42e01f), which Chromium never encodes in hardware (TD-1). H.265 runs on the GPU;
+  // viewers that can't decode it get LiveKit's VP8 backup codec. Hardware H.265 does a
+  // single layer only, so no simulcast.
+  const h265 = canEncodeH265();
   return {
     source: Track.Source.ScreenShare,
-    videoCodec: 'h264',
+    videoCodec: h265 ? 'h265' : 'h264',
     // A 720p layer lets weak connections keep watching a 1080p share.
-    simulcast: quality === '1080p60',
+    simulcast: !h265 && quality === '1080p60',
     screenShareEncoding: { maxBitrate: q.maxBitrate, maxFramerate: q.fps },
     screenShareSimulcastLayers: [new VideoPreset(1280, 720, 2_500_000, 30)],
     degradationPreference: degradationFor(mode),
