@@ -34,6 +34,7 @@ const api: LeTopeirasApi = {
     return () => ipcRenderer.off(IpcChannel.UpdateReady, handler);
   },
   installUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateInstall),
+  logEvent: (event, data) => ipcRenderer.invoke(IpcChannel.LogEvent, event, data),
 };
 
 // The preload is type-checked without DOM types; this is the one window API it uses.

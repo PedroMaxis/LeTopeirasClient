@@ -93,13 +93,18 @@ function canEncodeH265(): boolean {
   );
 }
 
-export function screenPublishOptions(mode: ShareMode, quality: ShareQuality): TrackPublishOptions {
+export function screenPublishOptions(
+  mode: ShareMode,
+  quality: ShareQuality,
+  preferH264: boolean,
+): TrackPublishOptions {
   const q = shareQualities[quality];
   // H.264 always lands on the software encoder: LiveKit negotiates Constrained Baseline
   // (42e01f), which Chromium never encodes in hardware (TD-1). H.265 runs on the GPU;
   // viewers that can't decode it get LiveKit's VP8 backup codec. Hardware H.265 does a
-  // single layer only, so no simulcast.
-  const h265 = canEncodeH265();
+  // single layer only, so no simulcast. `preferH264` is the escape hatch for GPUs whose
+  // H.265 encoder misbehaves.
+  const h265 = !preferH264 && canEncodeH265();
   return {
     source: Track.Source.ScreenShare,
     videoCodec: h265 ? 'h265' : 'h264',

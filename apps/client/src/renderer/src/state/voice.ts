@@ -14,6 +14,7 @@ import {
 } from 'livekit-client';
 import { errorMessage, type Api } from '../lib/api';
 import { MicProcessor, type MicOptions } from '../lib/audio';
+import { logEvent, watchShareStats } from '../lib/diagnostics';
 import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
   applyShareMode,
@@ -211,11 +212,25 @@ export class VoiceClient {
       const video = tracks.find((t) => t.kind === Track.Kind.Video) as LocalVideoTrack | undefined;
       if (!video) throw new Error('nenhuma trilha de vídeo foi capturada');
       // Sharing can also end outside the app (window closed, display unplugged).
-      video.once(TrackEvent.Ended, () => void this.stopScreenShare());
-      await room.localParticipant.publishTrack(video, screenPublishOptions(mode, quality));
+      video.once(TrackEvent.Ended, () => {
+        logEvent('share.ended');
+        void this.stopScreenShare();
+      });
+      const options = screenPublishOptions(mode, quality, settings.get().preferH264);
+      await room.localParticipant.publishTrack(video, options);
       this.store.set({ screenTrack: video });
       playSound('streamStart');
+      logEvent('share.start', {
+        kind: sourceId.split(':')[0],
+        mode,
+        quality,
+        codec: options.videoCodec,
+        simulcast: options.simulcast,
+        audio: withAudio,
+      });
+      watchShareStats(video, () => this.state.screenTrack === video);
     } catch (err) {
+      logEvent('share.error', { error: errorMessage(err) });
       showToast(`Não foi possível compartilhar a tela: ${errorMessage(err)}`);
       return;
     }
@@ -228,6 +243,7 @@ export class VoiceClient {
     if (!screenTrack) return;
     this.store.set({ screenTrack: null });
     playSound('streamStop');
+    logEvent('share.stop');
     await room?.localParticipant.unpublishTrack(screenTrack, true);
   }
 
@@ -247,6 +263,7 @@ export class VoiceClient {
     try {
       capture = await startSystemAudio(sourceId);
     } catch (err) {
+      logEvent('share.audio-error', { error: errorMessage(err) });
       showToast(`Transmitindo sem áudio: ${errorMessage(err)}`, 'info');
       return;
     }
@@ -259,6 +276,7 @@ export class VoiceClient {
       this.systemAudio = { capture, track: publication.track };
       this.store.set({ sharingAudio: true });
     } catch (err) {
+      logEvent('share.audio-error', { error: errorMessage(err) });
       capture.stop();
       showToast(`Transmitindo sem áudio: ${errorMessage(err)}`, 'info');
     }
@@ -337,6 +355,7 @@ export class VoiceClient {
 
     room.on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
       if (this.state.room !== room) return;
+      logEvent('voice.disconnected', { reason, attempt });
       if (reason === undefined || reason === DisconnectReason.CLIENT_INITIATED) return;
       if (reason === DisconnectReason.DUPLICATE_IDENTITY) {
         this.reset();

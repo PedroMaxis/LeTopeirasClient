@@ -79,7 +79,10 @@ export function registerPushToTalk(): void {
       if (!owner.isDestroyed()) owner.send(IpcChannel.PushToTalkState, down);
     }, POLL_MS);
     watch = { owner, timer };
-    owner.once('destroyed', () => watch?.owner === owner && stopWatch());
+    // A crashed renderer keeps its webContents (it gets reloaded), so stop on either.
+    const stop = () => watch?.owner === owner && stopWatch();
+    owner.once('destroyed', stop);
+    owner.once('render-process-gone', stop);
   });
 
   ipcMain.handle(IpcChannel.PushToTalkStop, (event) => {

@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, powerMonitor, session, shell } from 'elect
 import { APP_ID } from '@letopeiras/shared';
 import windowIconPath from '../../resources/tray.ico?asset';
 import { IpcChannel, type AppInfo } from '../shared/ipc';
+import { registerDiagnostics, startCrashReporter } from './diagnostics';
 import { configurePermissions } from './permissions';
 import { assertTrustedSender, rendererDevUrl, rendererFile } from './renderer';
 import { registerPushToTalk } from './push-to-talk';
@@ -14,6 +15,8 @@ import { registerUpdater } from './updater';
 
 // Remote voices must play as soon as they arrive, without waiting for a click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+
+startCrashReporter();
 
 /** Passed when Windows starts the app at login: stay in the tray instead of popping up. */
 const HIDDEN_ARG = '--hidden';
@@ -136,6 +139,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
+    registerDiagnostics(() => mainWindow);
     configurePermissions(session.defaultSession);
     registerScreenCapture(session.defaultSession);
     registerSessionStore();

@@ -32,6 +32,8 @@ const settingsSchema = z.object({
     .default(null),
   defaultShareMode: z.enum(['motion', 'detail']).default('motion'),
   defaultShareQuality: z.enum(['720p30', '720p60', '1080p60']).default('1080p60'),
+  /** Skip hardware H.265 for screen share even when the GPU offers it (lib/media.ts). */
+  preferH264: z.boolean().default(false),
   sounds: z.boolean().default(true),
   notifications: z.boolean().default(true),
   /** false: only notify when someone mentions you. */

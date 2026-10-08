@@ -61,6 +61,12 @@ export function StreamSettings() {
         />
         <div className="field-hint">Jogo prioriza fluidez; Texto prioriza nitidez.</div>
       </div>
+      <ToggleRow
+        label="Preferir H.264"
+        description="Codifica a tela no processador em vez da placa de vídeo. Use se o app travar ou ficar com a tela escura enquanto você transmite. Vale a partir da próxima transmissão."
+        checked={s.preferH264}
+        onChange={(preferH264) => updateSettings({ preferH264 })}
+      />
       <div className="settings-divider" />
       <ToggleRow
         label="Iniciar com o Windows"

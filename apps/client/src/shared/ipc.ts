@@ -29,6 +29,7 @@ export const IpcChannel = {
   UpdateInstall: 'update:install',
   /** main → renderer: an update finished downloading (payload: version). */
   UpdateReady: 'update:ready',
+  LogEvent: 'log:event',
 } as const;
 
 /** `window.postMessage` tag the preload uses to hand the PCM port to the page. */
@@ -119,4 +120,10 @@ export interface LeTopeirasApi {
   onUpdateReady(listener: (version: string) => void): () => void;
   /** Restarts the app into the downloaded update. */
   installUpdate(): Promise<void>;
+
+  /**
+   * Appends an event to the local session log (`letopeiras.log`), read when something breaks.
+   * Never put tokens, message text or window titles in `data`.
+   */
+  logEvent(event: string, data?: Record<string, unknown>): Promise<void>;
 }

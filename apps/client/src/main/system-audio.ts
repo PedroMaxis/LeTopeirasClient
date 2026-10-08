@@ -66,7 +66,10 @@ export function registerSystemAudio(): void {
     port1.start();
     const owner = event.sender;
     active = { capture, port: port1, owner };
-    owner.once('destroyed', () => active?.owner === owner && stopActive());
+    // A crashed renderer keeps its webContents (it gets reloaded), so stop on either.
+    const stop = () => active?.owner === owner && stopActive();
+    owner.once('destroyed', stop);
+    owner.once('render-process-gone', stop);
     owner.postMessage(IpcChannel.SystemAudioPort, null, [port2]);
     return { ok: true, mode: options.mode };
   });
