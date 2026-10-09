@@ -125,6 +125,8 @@ export function MainLayout() {
   }
 
   const channel = view && channels.find((c) => c.id === view.channelId);
+  const voiceChannel =
+    voiceChannelId !== null ? channels.find((c) => c.id === voiceChannelId) : undefined;
 
   return (
     <div className="main-layout">
@@ -139,7 +141,9 @@ export function MainLayout() {
             {showMembers && <MemberList />}
           </div>
         )}
-        {channel && view?.kind === 'voice' && <VoiceStage channel={channel} actions={actions} />}
+        {voiceChannel && (
+          <VoiceStage channel={voiceChannel} actions={actions} hidden={view?.kind !== 'voice'} />
+        )}
         {!channel && (
           <div className="empty-state">
             <Logo size={72} />

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Track, type Participant, type VideoTrack } from 'livekit-client';
 import type { Channel, User } from '@letopeiras/shared';
+import { errorMessage } from '../../lib/api';
 import { shareModeLabels, shareQualities } from '../../lib/media';
 import { useStore } from '../../lib/store';
+import { showToast } from '../../lib/toast';
 import { useSession } from '../../state/session';
 import type { LayoutActions } from '../MainLayout';
 import { Avatar } from '../ui/Avatar';
@@ -15,7 +17,19 @@ interface Share {
   height: number | undefined;
 }
 
-export function VoiceStage({ channel, actions }: { channel: Channel; actions: LayoutActions }) {
+/**
+ * Stays mounted (only `hidden`) while we're in the room and a text channel is on screen, so
+ * the featured share's picture-in-picture window survives switching channels.
+ */
+export function VoiceStage({
+  channel,
+  actions,
+  hidden,
+}: {
+  channel: Channel;
+  actions: LayoutActions;
+  hidden: boolean;
+}) {
   const { chat, voice } = useSession();
   useStore(voice.store, (s) => s.version);
   const room = useStore(voice.store, (s) => s.room);
@@ -42,7 +56,7 @@ export function VoiceStage({ channel, actions }: { channel: Channel; actions: La
   const selfState = (p: Participant) => voiceState?.find((v) => String(v.userId) === p.identity);
 
   return (
-    <section className="voice-stage">
+    <section className="voice-stage" hidden={hidden}>
       <header className="main-header stage-header">
         <Icon name="speaker" size={22} />
         <span className="main-header-title">{channel.name}</span>
@@ -183,6 +197,21 @@ function FeaturedShare({ share, name, isLocal }: { share: Share; name: string; i
     : share.participant.getTrackPublication(Track.Source.ScreenShareAudio) !== undefined;
   const container = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
+  const [inPip, setInPip] = useState(false);
+
+  // Same element for every featured share, so switching shares keeps the PiP window open.
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    const onEnter = () => setInPip(true);
+    const onLeave = () => setInPip(false);
+    el.addEventListener('enterpictureinpicture', onEnter);
+    el.addEventListener('leavepictureinpicture', onLeave);
+    return () => {
+      el.removeEventListener('enterpictureinpicture', onEnter);
+      el.removeEventListener('leavepictureinpicture', onLeave);
+    };
+  }, []);
 
   useEffect(() => {
     const el = video.current;
@@ -196,6 +225,16 @@ function FeaturedShare({ share, name, isLocal }: { share: Share; name: string; i
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void container.current?.requestFullscreen();
+  };
+
+  const togglePip = () => {
+    if (document.pictureInPictureElement) {
+      void document.exitPictureInPicture();
+      return;
+    }
+    video.current?.requestPictureInPicture().catch((err: unknown) => {
+      showToast(`Não deu para abrir a janela flutuante: ${errorMessage(err)}`);
+    });
   };
 
   const info = [
@@ -230,6 +269,17 @@ function FeaturedShare({ share, name, isLocal }: { share: Share; name: string; i
             onClick={() => voice.toggleShareAudio(identity)}
           >
             <Icon name={audioMuted ? 'speakerOff' : 'speaker'} size={18} />
+          </button>
+        )}
+        {document.pictureInPictureEnabled && (
+          <button
+            type="button"
+            className={`overlay-button ${inPip ? 'active' : ''}`}
+            aria-label={inPip ? 'Fechar janela flutuante' : 'Janela flutuante'}
+            title={inPip ? 'Fechar janela flutuante' : 'Janela flutuante'}
+            onClick={togglePip}
+          >
+            <Icon name="pip" size={18} />
           </button>
         )}
         <button

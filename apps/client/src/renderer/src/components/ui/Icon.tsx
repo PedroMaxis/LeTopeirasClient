@@ -68,6 +68,12 @@ const paths = {
     </>
   ),
   fullscreen: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
+  pip: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <rect x="12" y="12" width="6" height="4" rx="1" />
+    </>
+  ),
   members: (
     <>
       <circle cx="9" cy="8" r="3.5" />
