@@ -14,7 +14,7 @@ import {
 } from 'livekit-client';
 import type { KeybindBinding } from '../../../shared/ipc';
 import { errorMessage, type Api } from '../lib/api';
-import { MicProcessor, type MicOptions } from '../lib/audio';
+import { levelFromDb, MicProcessor, startMicMeter, type MicOptions } from '../lib/audio';
 import { logEvent, watchShareStats } from '../lib/diagnostics';
 import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
@@ -53,6 +53,8 @@ export interface VoiceState {
   mutedShares: ReadonlySet<string>;
   /** Identities whose screen share we stopped watching (unsubscribed until they share again). */
   unwatchedShares: ReadonlySet<string>;
+  /** We're muted but the mic hears speech: shows "Você está mutado" for a few seconds. */
+  mutedSpeaking: boolean;
   /** Round trip to the LiveKit server, for the "Voz conectada" panel. */
   pingMs: number | null;
   /** Bumped on every LiveKit event that can change what the UI shows. */
@@ -76,6 +78,12 @@ const RERENDER_EVENTS = [
 
 const MAX_REJOIN_ATTEMPTS = 3;
 
+/** "Você está mutado": speech above about -40 dBFS for this long, at most every cooldown. */
+const MUTED_SPEECH_LEVEL = levelFromDb(-40);
+const MUTED_SPEECH_MS = 300;
+const MUTED_WARNING_MS = 3000;
+const MUTED_WARNING_COOLDOWN_MS = 15_000;
+
 /** Both shortcuts at once, to tell whether they changed. */
 const keybindsKey = (s: Settings) => `${JSON.stringify(s.muteKey)}|${JSON.stringify(s.deafenKey)}`;
 
@@ -97,6 +105,7 @@ export class VoiceClient {
     sharingAudio: false,
     mutedShares: new Set(),
     unwatchedShares: new Set(),
+    mutedSpeaking: false,
     pingMs: null,
     version: 0,
   });
@@ -113,6 +122,12 @@ export class VoiceClient {
   private unsubscribePushToTalk: () => void;
   private unsubscribeVoiceAction: () => void;
   private unsubscribeTray: () => void;
+  /** Stops the meter that listens for speech while muted; set while it runs. */
+  private stopMutedMeter: (() => void) | null = null;
+  private mutedMeterOn = false;
+  private mutedMeterSeq = 0;
+  private lastMutedWarning = 0;
+  private mutedWarningTimer: ReturnType<typeof setTimeout> | undefined;
   /** Push-to-talk key state from main; kept here so a new mic processor starts in sync. */
   private pttDown = false;
   private joinSeq = 0;
@@ -184,6 +199,7 @@ export class VoiceClient {
     }
 
     this.store.set({ room, status: 'connected' });
+    void this.syncMutedMeter(settings.get());
     if (attempt === 0) playSound('join');
     // No room.startAudio(): Electron doesn't block autoplay, and startAudio unmutes every
     // attached element, which would play voices a second time outside the mixer.
@@ -472,10 +488,12 @@ export class VoiceClient {
       unwatchedShares: new Set(),
       pingMs: null,
     });
+    void this.syncMutedMeter(settings.get());
     void this.syncPushToTalk(settings.get());
   }
 
   private async afterSelfChange(): Promise<void> {
+    void this.syncMutedMeter(settings.get());
     this.applyOutput();
     await this.syncMicrophone();
     if (this.state.room) this.reportState(this.state.muted, this.state.deafened);
@@ -501,6 +519,60 @@ export class VoiceClient {
       Track.Source.Microphone,
     )?.track;
     return track instanceof LocalAudioTrack ? track : undefined;
+  }
+
+  /**
+   * While muted (not deafened, not on push-to-talk) in a room, a separate meter listens to the
+   * mic: the LiveKit track is disabled then, so it can't tell us anything.
+   */
+  private async syncMutedMeter(s: Settings, restart = false): Promise<void> {
+    const { room, muted, deafened } = this.state;
+    const want = room !== null && muted && !deafened && !s.pushToTalk;
+    if (want === this.mutedMeterOn && !restart) return;
+    this.mutedMeterOn = want;
+    const seq = ++this.mutedMeterSeq;
+    this.stopMutedMeter?.();
+    this.stopMutedMeter = null;
+    this.hideMutedWarning();
+    if (!want) return;
+    let speechSince: number | null = null;
+    try {
+      const stop = await startMicMeter(
+        {
+          deviceId: s.inputDeviceId,
+          gain: s.inputVolume / 100,
+          constraints: audioCaptureOptions(s),
+          // Typing and clicks shouldn't count as talking.
+          rnnoise: true,
+        },
+        (level) => {
+          const now = Date.now();
+          if (level < MUTED_SPEECH_LEVEL) {
+            speechSince = null;
+            return;
+          }
+          speechSince ??= now;
+          if (now - speechSince >= MUTED_SPEECH_MS) this.showMutedWarning(now);
+        },
+      );
+      if (seq === this.mutedMeterSeq) this.stopMutedMeter = stop;
+      else stop();
+    } catch {
+      // No mic access: nothing to warn about.
+    }
+  }
+
+  private showMutedWarning(now: number): void {
+    if (now - this.lastMutedWarning < MUTED_WARNING_COOLDOWN_MS) return;
+    this.lastMutedWarning = now;
+    this.store.set({ mutedSpeaking: true });
+    clearTimeout(this.mutedWarningTimer);
+    this.mutedWarningTimer = setTimeout(() => this.hideMutedWarning(), MUTED_WARNING_MS);
+  }
+
+  private hideMutedWarning(): void {
+    clearTimeout(this.mutedWarningTimer);
+    if (this.state.mutedSpeaking) this.store.set({ mutedSpeaking: false });
   }
 
   private async syncKeybinds(s: Settings): Promise<void> {
@@ -596,6 +668,13 @@ export class VoiceClient {
     }
     if (prev.pushToTalk !== next.pushToTalk || prev.pttKey !== next.pttKey) {
       await this.syncPushToTalk(next);
+    }
+    if (
+      prev.pushToTalk !== next.pushToTalk ||
+      prev.inputDeviceId !== next.inputDeviceId ||
+      prev.inputVolume !== next.inputVolume
+    ) {
+      void this.syncMutedMeter(next, true);
     }
     if (prev.outputDeviceId !== next.outputDeviceId) {
       await this.mixer.setSinkId(next.outputDeviceId);

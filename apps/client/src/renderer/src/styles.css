@@ -926,6 +926,28 @@ a:hover {
   gap: 8px;
 }
 
+.muted-warning {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 4px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  animation: muted-warning-in 0.15s ease-out;
+}
+
+@keyframes muted-warning-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
 .voice-panel-row {
   display: flex;
   align-items: center;

@@ -18,6 +18,7 @@ export function VoicePanel({ actions }: { actions: LayoutActions }) {
   const status = useStore(voice.store, (s) => s.status);
   const pingMs = useStore(voice.store, (s) => s.pingMs);
   const sharing = useStore(voice.store, (s) => s.screenTrack !== null);
+  const mutedSpeaking = useStore(voice.store, (s) => s.mutedSpeaking);
   const channel = useStore(chat.store, (s) => s.channels.find((c) => c.id === channelId));
 
   if (channelId === null) return null;
@@ -38,6 +39,17 @@ export function VoicePanel({ actions }: { actions: LayoutActions }) {
         </button>
         <IconButton icon="hangup" label="Desconectar" onClick={() => void voice.leave()} />
       </div>
+      {mutedSpeaking && (
+        <button
+          type="button"
+          className="muted-warning"
+          title="Clique para ativar o microfone"
+          onClick={() => void voice.toggleMute()}
+        >
+          <Icon name="micOff" size={16} />
+          Você está mutado
+        </button>
+      )}
       <button
         type="button"
         className={`button secondary small ${sharing ? 'sharing' : ''}`}
