@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { LIMITS, type Channel } from '@letopeiras/shared';
 import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
@@ -8,9 +8,20 @@ import { useMentionAutocomplete } from './MentionSuggestions';
 
 export function Composer({ channel }: { channel: Channel }) {
   const { chat } = useSession();
-  const [value, setValue] = useState('');
+  const [value, setText] = useState(() => chat.getDraft(channel.id));
   const [emojiOpen, setEmojiOpen] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
+  // Mounted per channel (keyed in ChatView), so the draft is what survives switching.
+  const setValue = (next: string) => {
+    setText(next);
+    chat.setDraft(channel.id, next);
+  };
+
+  // A restored draft resumes typing at its end.
+  useEffect(() => {
+    const el = input.current;
+    el?.setSelectionRange(el.value.length, el.value.length);
+  }, []);
   const mentions = useMentionAutocomplete({ channel, value, setValue, input });
 
   /** Inserts at the cursor and keeps typing focus. */

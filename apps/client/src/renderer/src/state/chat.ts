@@ -83,6 +83,8 @@ export class ChatClient {
   private typingTimer: ReturnType<typeof setInterval>;
   /** The text channel on screen, so mentions there don't notify while we're looking. */
   private viewingChannelId: number | null = null;
+  /** Unsent composer text per channel. Memory only, so message text never touches the disk. */
+  private readonly drafts = new Map<number, string>();
 
   constructor(
     token: string,
@@ -183,6 +185,15 @@ export class ChatClient {
       readStates: { ...s.readStates, [channelId]: last },
       mentionCounts: without(s.mentionCounts, channelId),
     }));
+  }
+
+  getDraft(channelId: number): string {
+    return this.drafts.get(channelId) ?? '';
+  }
+
+  setDraft(channelId: number, text: string): void {
+    if (text) this.drafts.set(channelId, text);
+    else this.drafts.delete(channelId);
   }
 
   setViewingChannel(channelId: number | null): void {
