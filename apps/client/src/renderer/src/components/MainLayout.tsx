@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { OPEN_CHANNEL_EVENT } from '../lib/notify';
 import { canAccess } from '../lib/roles';
-import { settings } from '../lib/settings';
+import { settings, updateSettings } from '../lib/settings';
 import { useStore } from '../lib/store';
 import { useSession } from '../state/session';
 import { ChannelSidebar } from './sidebar/ChannelSidebar';
@@ -41,9 +41,11 @@ export function MainLayout() {
   const categories = useStore(chat.store, (s) => s.categories);
   const voiceChannelId = useStore(voice.store, (s) => s.channelId);
   const showMembers = useStore(settings, (s) => s.showMembers);
+  const voiceChatOpen = useStore(settings, (s) => s.voiceChat);
 
   const [selected, setSelected] = useState<View | null>(null);
   const [lastText, setLastText] = useState<number | null>(null);
+  const [voiceChatId, setVoiceChatId] = useState<number | null>(null);
   const meId = me?.id;
   const storedLastText = useMemo(() => (meId ? loadLastText(meId) : null), [meId]);
   const [settingsPage, setSettingsPage] = useState<SettingsPage | null>(null);
@@ -74,21 +76,27 @@ export function MainLayout() {
         ? { kind: 'text', channelId: fallbackId }
         : null;
 
+  // The voice stage's chat panel: the channel picked there, else the last text channel.
+  const voiceChatChannelId = canOpenText(voiceChatId) ? voiceChatId : (fallbackId ?? null);
+  const voiceChatShown = view?.kind === 'voice' && voiceChatOpen && voiceChatChannelId !== null;
+
   // Tells the chat which channel is on screen (mentions there don't notify).
-  const viewingTextChannel = view?.kind === 'text' ? view.channelId : null;
+  const viewingTextChannel =
+    view?.kind === 'text' ? view.channelId : voiceChatShown ? voiceChatChannelId : null;
   useEffect(() => {
     chat.setViewingChannel(viewingTextChannel);
   }, [chat, viewingTextChannel]);
 
-  // Reopen there next time.
+  // Reopen there next time (only channels opened from the sidebar).
+  const lastShownText = view?.kind === 'text' ? view.channelId : null;
   useEffect(() => {
-    if (!meId || viewingTextChannel === null) return;
+    if (!meId || lastShownText === null) return;
     try {
-      localStorage.setItem(lastTextKey(meId), String(viewingTextChannel));
+      localStorage.setItem(lastTextKey(meId), String(lastShownText));
     } catch {
       // Not worth bothering anyone about; next start just opens the first channel.
     }
-  }, [meId, viewingTextChannel]);
+  }, [meId, lastShownText]);
 
   // Clicking a message notification opens its channel.
   useEffect(() => {
@@ -125,6 +133,8 @@ export function MainLayout() {
   }
 
   const channel = view && channels.find((c) => c.id === view.channelId);
+  const voiceChatChannel =
+    voiceChatChannelId !== null ? channels.find((c) => c.id === voiceChatChannelId) : undefined;
   const voiceChannel =
     voiceChannelId !== null ? channels.find((c) => c.id === voiceChannelId) : undefined;
 
@@ -142,7 +152,17 @@ export function MainLayout() {
           </div>
         )}
         {voiceChannel && (
-          <VoiceStage channel={voiceChannel} actions={actions} hidden={view?.kind !== 'voice'} />
+          <VoiceStage
+            channel={voiceChannel}
+            actions={actions}
+            hidden={view?.kind !== 'voice'}
+            chat={{
+              channel: voiceChatChannel,
+              open: voiceChatOpen,
+              onToggle: () => updateSettings({ voiceChat: !voiceChatOpen }),
+              onSelect: setVoiceChatId,
+            }}
+          />
         )}
         {!channel && (
           <div className="empty-state">

@@ -81,6 +81,7 @@ const paths = {
       <path d="M4 4l16 16" />
     </>
   ),
+  chat: <path d="M4 5h16v11H9l-5 4z" />,
   grid: (
     <>
       <rect x="3" y="3" width="8" height="8" rx="1.5" />

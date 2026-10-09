@@ -8,8 +8,10 @@ import { useStore } from '../../lib/store';
 import { showToast } from '../../lib/toast';
 import { useSession } from '../../state/session';
 import { isWatching } from '../../state/voice';
+import { ChatPanel } from '../chat/ChatPanel';
 import type { LayoutActions } from '../MainLayout';
 import { Avatar } from '../ui/Avatar';
+import { IconButton } from '../ui/controls';
 import { Icon, type IconName } from '../ui/Icon';
 import { useVolumeMenu } from './VolumeMenu';
 
@@ -65,10 +67,18 @@ export function VoiceStage({
   channel,
   actions,
   hidden,
+  chat: chatPanel,
 }: {
   channel: Channel;
   actions: LayoutActions;
   hidden: boolean;
+  /** The text chat panel beside the stage (state lives in MainLayout). */
+  chat: {
+    channel: Channel | undefined;
+    open: boolean;
+    onToggle(): void;
+    onSelect(channelId: number): void;
+  };
 }) {
   const { chat, voice } = useSession();
   useStore(voice.store, (s) => s.version);
@@ -145,8 +155,8 @@ export function VoiceStage({
               ? 'Reconectando…'
               : 'Conectando…'}
         </span>
-        {focused && (
-          <div className="main-header-actions">
+        <div className="main-header-actions">
+          {focused && (
             <button
               type="button"
               className="button secondary small"
@@ -155,79 +165,97 @@ export function VoiceStage({
               <Icon name="grid" size={16} />
               Ver todas
             </button>
-          </div>
-        )}
+          )}
+          <IconButton
+            icon="chat"
+            size={22}
+            label={chatPanel.open ? 'Esconder o chat' : 'Mostrar o chat'}
+            active={chatPanel.open}
+            disabled={!chatPanel.channel}
+            onClick={chatPanel.onToggle}
+          />
+        </div>
       </header>
 
-      <div className="stage-body">
-        {focused ? (
-          <div className="stage-focus">
-            <ShareTile share={focused} large />
-          </div>
-        ) : (
-          <div className="stage-grid" ref={setGrid}>
-            {shares.length > 0
-              ? shares.map((share) => (
+      <div className="stage-row">
+        <div className="stage-body">
+          {focused ? (
+            <div className="stage-focus">
+              <ShareTile share={focused} large />
+            </div>
+          ) : (
+            <div className="stage-grid" ref={setGrid}>
+              {shares.length > 0
+                ? shares.map((share) => (
+                    <ShareTile
+                      key={`s-${share.participant.identity}`}
+                      share={share}
+                      style={tile}
+                      onSelect={() => setFocusedId(share.participant.identity)}
+                    />
+                  ))
+                : participants.map((p) => participantTile(p, false))}
+            </div>
+          )}
+
+          {(focused || shares.length > 0) && (
+            <div className="stage-strip">
+              {shares
+                .filter((s) => s !== focused)
+                .map((share) => (
                   <ShareTile
                     key={`s-${share.participant.identity}`}
                     share={share}
-                    style={tile}
+                    small
                     onSelect={() => setFocusedId(share.participant.identity)}
                   />
-                ))
-              : participants.map((p) => participantTile(p, false))}
-          </div>
-        )}
+                ))}
+              {participants.map((p) => participantTile(p, true))}
+            </div>
+          )}
 
-        {(focused || shares.length > 0) && (
-          <div className="stage-strip">
-            {shares
-              .filter((s) => s !== focused)
-              .map((share) => (
-                <ShareTile
-                  key={`s-${share.participant.identity}`}
-                  share={share}
-                  small
-                  onSelect={() => setFocusedId(share.participant.identity)}
-                />
-              ))}
-            {participants.map((p) => participantTile(p, true))}
+          {volumeMenu.menu}
+          <div className="stage-controls">
+            <StageButton
+              icon={muted || deafened ? 'micOff' : 'mic'}
+              label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
+              off={muted || deafened}
+              onClick={() => void voice.toggleMute()}
+            />
+            <StageButton
+              icon={deafened ? 'headphonesOff' : 'headphones'}
+              label={deafened ? 'Voltar a ouvir' : 'Ensurdecer'}
+              off={deafened}
+              onClick={() => void voice.toggleDeafen()}
+            />
+            <StageButton
+              icon="screen"
+              label={sharing ? 'Parar transmissão' : 'Compartilhar tela'}
+              accent={sharing}
+              disabled={status !== 'connected'}
+              onClick={() => (sharing ? void voice.stopScreenShare() : actions.openScreenPicker())}
+            />
+            <StageButton
+              icon="settings"
+              label="Configurações de voz"
+              onClick={() => actions.openSettings()}
+            />
+            <StageButton
+              icon="hangup"
+              label="Sair do canal"
+              leave
+              onClick={() => void voice.leave()}
+            />
           </div>
-        )}
-
-        {volumeMenu.menu}
-        <div className="stage-controls">
-          <StageButton
-            icon={muted || deafened ? 'micOff' : 'mic'}
-            label={muted ? 'Ativar microfone' : 'Silenciar microfone'}
-            off={muted || deafened}
-            onClick={() => void voice.toggleMute()}
-          />
-          <StageButton
-            icon={deafened ? 'headphonesOff' : 'headphones'}
-            label={deafened ? 'Voltar a ouvir' : 'Ensurdecer'}
-            off={deafened}
-            onClick={() => void voice.toggleDeafen()}
-          />
-          <StageButton
-            icon="screen"
-            label={sharing ? 'Parar transmissão' : 'Compartilhar tela'}
-            accent={sharing}
-            disabled={status !== 'connected'}
-            onClick={() => (sharing ? void voice.stopScreenShare() : actions.openScreenPicker())}
-          />
-          <StageButton
-            icon="settings"
-            label="Configurações de voz"
-            onClick={() => actions.openSettings()}
-          />
-          <StageButton
-            icon="hangup"
-            label="Sair do canal"
-            leave
-            onClick={() => void voice.leave()}
-          />
         </div>
+        {/* Not while hidden: the text view has its own composer for the same channel. */}
+        {chatPanel.open && chatPanel.channel && !hidden && (
+          <ChatPanel
+            channel={chatPanel.channel}
+            onSelect={chatPanel.onSelect}
+            onClose={chatPanel.onToggle}
+          />
+        )}
       </div>
     </section>
   );
