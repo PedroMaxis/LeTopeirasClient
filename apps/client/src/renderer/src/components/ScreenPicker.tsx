@@ -7,6 +7,32 @@ import { IconButton, Segmented, ToggleRow } from './ui/controls';
 
 type Tab = ScreenSource['kind'];
 
+/** Last tab and source shared on this PC, pre-selected next time if it's still there. */
+const LAST_KEY = 'letopeiras.lastShareSource';
+
+function loadLast(): { tab: Tab; id: string | null } {
+  try {
+    const last = JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null') as {
+      tab?: unknown;
+      id?: unknown;
+    } | null;
+    return {
+      tab: last?.tab === 'screen' ? 'screen' : 'window',
+      id: typeof last?.id === 'string' ? last.id : null,
+    };
+  } catch {
+    return { tab: 'window', id: null };
+  }
+}
+
+function saveLast(tab: Tab, id: string): void {
+  try {
+    localStorage.setItem(LAST_KEY, JSON.stringify({ tab, id }));
+  } catch {
+    // Only a convenience.
+  }
+}
+
 const modeOptions = (Object.keys(shareModeLabels) as ShareMode[]).map((value) => ({
   value,
   label: shareModeLabels[value],
@@ -21,7 +47,8 @@ export function ScreenPicker({ onClose }: { onClose(): void }) {
   const [sources, setSources] = useState<ScreenSource[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tab, setTab] = useState<Tab>('window');
+  const [last] = useState(loadLast);
+  const [tab, setTab] = useState<Tab>(last.tab);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<ShareMode>(voice.state.shareMode);
   const [quality, setQuality] = useState<ShareQuality>(voice.state.shareQuality);
@@ -40,20 +67,16 @@ export function ScreenPicker({ onClose }: { onClose(): void }) {
     let cancelled = false;
     window.api
       .getScreenSources()
-      .then((list) => !cancelled && setSources(list))
+      .then((list) => {
+        if (cancelled) return;
+        setSources(list);
+        if (list.some((s) => s.id === last.id)) setSelectedId(last.id);
+      })
       .catch((err: unknown) => !cancelled && setError(errorMessage(err)));
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
-
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [reloadKey, last.id]);
 
   const refresh = () => {
     setError(null);
@@ -61,13 +84,30 @@ export function ScreenPicker({ onClose }: { onClose(): void }) {
     setReloadKey((key) => key + 1);
   };
 
+  const audioAvailable = audioStatus?.available === true;
+
   const start = (sourceId: string) => {
+    const kind = sources?.find((s) => s.id === sourceId)?.kind ?? tab;
+    saveLast(kind, sourceId);
     onClose();
     void voice.startScreenShare(sourceId, mode, quality, withAudio && audioAvailable);
   };
 
   const visible = sources?.filter((s) => s.kind === tab) ?? [];
-  const audioAvailable = audioStatus?.available === true;
+  const selectedVisible = visible.some((s) => s.id === selectedId) ? selectedId : null;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'Enter' && selectedVisible) {
+        // Otherwise the focused button behind the modal (e.g. "Tela") would click again.
+        e.preventDefault();
+        start(selectedVisible);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  });
   const audioDescription =
     audioStatus && !audioStatus.available
       ? `Indisponível neste PC: ${audioStatus.reason}.`
@@ -118,7 +158,7 @@ export function ScreenPicker({ onClose }: { onClose(): void }) {
             <button
               type="button"
               key={source.id}
-              className={`source ${selectedId === source.id ? 'selected' : ''}`}
+              className={`source ${selectedVisible === source.id ? 'selected' : ''}`}
               onClick={() => setSelectedId(source.id)}
               onDoubleClick={() => start(source.id)}
             >
@@ -164,8 +204,8 @@ export function ScreenPicker({ onClose }: { onClose(): void }) {
           <button
             type="button"
             className="button primary"
-            disabled={!selectedId}
-            onClick={() => selectedId && start(selectedId)}
+            disabled={!selectedVisible}
+            onClick={() => selectedVisible && start(selectedVisible)}
           >
             Transmitir
           </button>
