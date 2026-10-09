@@ -8,6 +8,7 @@ import {
   type Ref,
 } from 'react';
 import type { Channel, Message } from '@letopeiras/shared';
+import { formatDay, sameDay } from '../../lib/format';
 import { useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
@@ -130,13 +131,23 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
           {messages.map((message, i) => {
             const prev = messages[i - 1];
             const isNew = message.id === firstUnread;
+            // The first loaded message only starts a day if it's the start of the channel.
+            const newDay = prev ? !sameDay(prev.createdAt, message.createdAt) : !entry?.hasMore;
             const grouped =
               !isNew &&
+              !newDay &&
               prev !== undefined &&
               prev.authorId === message.authorId &&
               message.createdAt - prev.createdAt < GROUP_WINDOW_MS;
             return (
               <div key={message.id}>
+                {newDay && (
+                  <div className="day-divider">
+                    <span />
+                    {formatDay(message.createdAt)}
+                    <span />
+                  </div>
+                )}
                 {isNew && (
                   <div className="new-divider">
                     <span />

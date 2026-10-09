@@ -1109,6 +1109,22 @@ a:hover {
   font-weight: 800;
 }
 
+.day-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 16px 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.day-divider span {
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
 .new-divider span {
   flex: 1;
   height: 1px;
