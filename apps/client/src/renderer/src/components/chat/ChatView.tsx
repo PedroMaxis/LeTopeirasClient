@@ -1,13 +1,15 @@
+import { useRef } from 'react';
 import type { Channel } from '@letopeiras/shared';
 import { settings, updateSettings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { IconButton } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { Composer } from './Composer';
-import { MessageList } from './MessageList';
+import { MessageList, type MessageListHandle } from './MessageList';
 
 export function ChatView({ channel }: { channel: Channel }) {
   const showMembers = useStore(settings, (s) => s.showMembers);
+  const list = useRef<MessageListHandle>(null);
   return (
     <section className="chat">
       <header className="main-header">
@@ -32,8 +34,12 @@ export function ChatView({ channel }: { channel: Channel }) {
         </div>
       </header>
       {/* Keyed so scroll position and the "NOVAS" marker reset per channel. */}
-      <MessageList key={channel.id} channel={channel} />
-      <Composer key={`composer-${channel.id}`} channel={channel} />
+      <MessageList key={channel.id} ref={list} channel={channel} />
+      <Composer
+        key={`composer-${channel.id}`}
+        channel={channel}
+        onEscape={() => list.current?.jumpToBottom()}
+      />
     </section>
   );
 }

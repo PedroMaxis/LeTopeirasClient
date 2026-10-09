@@ -6,7 +6,7 @@ import { IconButton } from '../ui/controls';
 import { EmojiPicker } from './EmojiPicker';
 import { useMentionAutocomplete } from './MentionSuggestions';
 
-export function Composer({ channel }: { channel: Channel }) {
+export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): void }) {
   const { chat } = useSession();
   const [value, setText] = useState(() => chat.getDraft(channel.id));
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -47,6 +47,8 @@ export function Composer({ channel }: { channel: Channel }) {
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (mentions.onKeyDown(e)) return;
+    // Esc goes back to the newest messages (the emoji picker closes itself instead).
+    if (e.key === 'Escape' && !emojiOpen) onEscape();
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
