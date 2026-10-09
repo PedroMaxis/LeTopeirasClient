@@ -2,13 +2,16 @@ import { useRef, useState, type KeyboardEvent } from 'react';
 import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeiras/shared';
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp, renderContent } from '../../lib/format';
-import { useStore } from '../../lib/store';
+import { Store, useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Avatar } from '../ui/Avatar';
 import { IconButton } from '../ui/controls';
 import { useMentionAutocomplete } from './MentionSuggestions';
+
+/** The message being edited, if any; one at a time, opened from the item or with ↑. */
+export const editingMessage = new Store<{ id: number | null }>({ id: null });
 
 interface Props {
   message: Message;
@@ -23,7 +26,8 @@ export function MessageItem({ message, grouped }: Props) {
   const me = useStore(chat.store, (s) => s.me);
   const users = useStore(chat.store, (s) => s.users);
   const channel = useStore(chat.store, (s) => s.channels.find((c) => c.id === message.channelId));
-  const [editing, setEditing] = useState(false);
+  const editing = useStore(editingMessage, (s) => s.id === message.id);
+  const setEditing = (on: boolean) => editingMessage.set({ id: on ? message.id : null });
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const mine = message.authorId === me?.id;
@@ -105,9 +109,12 @@ export function MessageItem({ message, grouped }: Props) {
             <IconButton
               icon="trash"
               size={16}
-              label="Apagar"
+              label="Apagar (Shift+clique apaga sem perguntar)"
               danger
-              onClick={() => setConfirmDelete(true)}
+              onClick={(e) => {
+                if (e.shiftKey) chat.deleteMessage(message.id);
+                else setConfirmDelete(true);
+              }}
             />
           )}
         </div>

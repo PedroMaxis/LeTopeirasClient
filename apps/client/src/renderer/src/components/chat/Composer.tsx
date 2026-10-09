@@ -4,6 +4,7 @@ import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
 import { IconButton } from '../ui/controls';
 import { EmojiPicker } from './EmojiPicker';
+import { editingMessage } from './MessageItem';
 import { useMentionAutocomplete } from './MentionSuggestions';
 
 export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): void }) {
@@ -49,6 +50,15 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
     if (mentions.onKeyDown(e)) return;
     // Esc goes back to the newest messages (the emoji picker closes itself instead).
     if (e.key === 'Escape' && !emojiOpen) onEscape();
+    // ↑ in an empty box edits your last message, like in Discord.
+    if (e.key === 'ArrowUp' && !value) {
+      const { me, messages } = chat.store.get();
+      const last = messages[channel.id]?.messages.findLast((m) => m.authorId === me?.id);
+      if (last) {
+        e.preventDefault();
+        editingMessage.set({ id: last.id });
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
       send();
