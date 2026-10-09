@@ -40,6 +40,8 @@ const settingsSchema = z.object({
   notifyAll: z.boolean().default(true),
   /** Per-user voice volume in percent (0–200), keyed by user id. */
   userVolumes: z.record(z.string(), z.number().min(0).max(200)).default({}),
+  /** Per-user screen share audio volume in percent (0–200), keyed by user id. */
+  shareVolumes: z.record(z.string(), z.number().min(0).max(200)).default({}),
 });
 export type Settings = z.infer<typeof settingsSchema>;
 

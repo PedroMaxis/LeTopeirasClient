@@ -1437,6 +1437,39 @@ a:hover {
   color: var(--accent);
 }
 
+/* Speaker button with a volume slider that slides out on hover. */
+.share-volume {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.share-volume .overlay-button {
+  background: transparent;
+}
+
+.share-volume:hover {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.share-volume .slider {
+  width: 0;
+  margin: 0;
+  opacity: 0;
+  transition:
+    width 0.15s,
+    margin 0.15s,
+    opacity 0.15s;
+}
+
+.share-volume:hover .slider,
+.share-volume:focus-within .slider {
+  width: 96px;
+  margin: 0 4px 0 12px;
+  opacity: 1;
+}
+
 .stage-tiles {
   display: flex;
   gap: 12px;

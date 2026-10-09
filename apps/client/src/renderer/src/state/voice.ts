@@ -50,6 +50,8 @@ export interface VoiceState {
   sharingAudio: boolean;
   /** Identities whose screen share audio we muted locally. */
   mutedShares: ReadonlySet<string>;
+  /** Identities whose screen share we stopped watching (unsubscribed until they share again). */
+  unwatchedShares: ReadonlySet<string>;
   /** Round trip to the LiveKit server, for the "Voz conectada" panel. */
   pingMs: number | null;
   /** Bumped on every LiveKit event that can change what the UI shows. */
@@ -73,6 +75,9 @@ const RERENDER_EVENTS = [
 
 const MAX_REJOIN_ATTEMPTS = 3;
 
+const isShareSource = (source: Track.Source) =>
+  source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio;
+
 /** Owns the LiveKit room of the voice channel we are in (at most one). */
 export class VoiceClient {
   readonly store = new Store<VoiceState>({
@@ -87,6 +92,7 @@ export class VoiceClient {
     shareAudio: true,
     sharingAudio: false,
     mutedShares: new Set(),
+    unwatchedShares: new Set(),
     pingMs: null,
     version: 0,
   });
@@ -247,6 +253,28 @@ export class VoiceClient {
     await room?.localParticipant.unpublishTrack(screenTrack, true);
   }
 
+  /** Someone's screen share audio volume for us, 0–200 %. Saved per user. */
+  setShareVolume(userId: number, volume: number): void {
+    updateSettings({ shareVolumes: { ...settings.get().shareVolumes, [userId]: volume } });
+  }
+
+  /**
+   * Stops or resumes watching someone's screen share. A remote share is unsubscribed (video
+   * and audio), so it costs no bandwidth; our own just stops showing the preview.
+   */
+  setWatching(identity: string, watching: boolean): void {
+    this.store.set((s) => {
+      const unwatchedShares = new Set(s.unwatchedShares);
+      if (watching) unwatchedShares.delete(identity);
+      else unwatchedShares.add(identity);
+      return { unwatchedShares };
+    });
+    const participant = this.state.room?.remoteParticipants.get(identity);
+    for (const source of [Track.Source.ScreenShare, Track.Source.ScreenShareAudio]) {
+      participant?.getTrackPublication(source)?.setSubscribed(watching);
+    }
+  }
+
   /** Mutes or unmutes, for us only, the audio of someone's screen share. */
   toggleShareAudio(identity: string): void {
     this.store.set((s) => {
@@ -336,13 +364,29 @@ export class VoiceClient {
       },
     );
     room.on(RoomEvent.ParticipantConnected, () => playSound('userJoin'));
-    room.on(RoomEvent.ParticipantDisconnected, () => playSound('userLeave'));
-    room.on(RoomEvent.TrackPublished, (publication: RemoteTrackPublication) => {
-      if (publication.source === Track.Source.ScreenShare) playSound('streamStart');
+    room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
+      playSound('userLeave');
+      if (this.isUnwatched(participant.identity)) this.forgetUnwatched(participant.identity);
     });
-    room.on(RoomEvent.TrackUnpublished, (publication: RemoteTrackPublication) => {
-      if (publication.source === Track.Source.ScreenShare) playSound('streamStop');
-    });
+    room.on(
+      RoomEvent.TrackPublished,
+      (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        if (publication.source === Track.Source.ScreenShare) playSound('streamStart');
+        // Share audio published after we stopped watching (or a resumed connection) stays off.
+        if (isShareSource(publication.source) && this.isUnwatched(participant.identity)) {
+          publication.setSubscribed(false);
+        }
+      },
+    );
+    room.on(
+      RoomEvent.TrackUnpublished,
+      (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
+        if (publication.source !== Track.Source.ScreenShare) return;
+        playSound('streamStop');
+        // Their next share starts watched again.
+        if (this.isUnwatched(participant.identity)) this.forgetUnwatched(participant.identity);
+      },
+    );
 
     room.on(RoomEvent.ConnectionStateChanged, (state) => {
       if (this.state.room !== room) return;
@@ -395,6 +439,7 @@ export class VoiceClient {
       room: null,
       screenTrack: null,
       sharingAudio: false,
+      unwatchedShares: new Set(),
       pingMs: null,
     });
     void this.syncPushToTalk(settings.get());
@@ -463,12 +508,27 @@ export class VoiceClient {
     await track.setProcessor(this.micProcessor);
   }
 
+  private isUnwatched(identity: string): boolean {
+    return this.state.unwatchedShares.has(identity);
+  }
+
+  private forgetUnwatched(identity: string): void {
+    this.store.set((s) => {
+      const unwatchedShares = new Set(s.unwatchedShares);
+      unwatchedShares.delete(identity);
+      return { unwatchedShares };
+    });
+  }
+
   private gainFor(tag: { identity: string; screen: boolean }): number {
     const { deafened, mutedShares } = this.state;
-    // Deafen silences voices only; a share's audio has its own mute button.
-    if (tag.screen) return mutedShares.has(tag.identity) ? 0 : 1;
+    const s = settings.get();
+    // Deafen silences voices only; a share's audio has its own mute button and volume.
+    if (tag.screen) {
+      return mutedShares.has(tag.identity) ? 0 : (s.shareVolumes[tag.identity] ?? 100) / 100;
+    }
     if (deafened) return 0;
-    return (settings.get().userVolumes[tag.identity] ?? 100) / 100;
+    return (s.userVolumes[tag.identity] ?? 100) / 100;
   }
 
   private applyOutput(): void {
@@ -479,7 +539,11 @@ export class VoiceClient {
   private async applySettings(prev: Settings, next: Settings): Promise<void> {
     const { room } = this.state;
     if (!room) return;
-    if (prev.outputVolume !== next.outputVolume || prev.userVolumes !== next.userVolumes) {
+    if (
+      prev.outputVolume !== next.outputVolume ||
+      prev.userVolumes !== next.userVolumes ||
+      prev.shareVolumes !== next.shareVolumes
+    ) {
       this.applyOutput();
     }
     if (

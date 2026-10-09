@@ -3,6 +3,7 @@ import { Track, type Participant, type VideoTrack } from 'livekit-client';
 import type { Channel, User } from '@letopeiras/shared';
 import { errorMessage } from '../../lib/api';
 import { shareModeLabels, shareQualities } from '../../lib/media';
+import { settings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { showToast } from '../../lib/toast';
 import { useSession } from '../../state/session';
@@ -13,7 +14,8 @@ import { useVolumeMenu } from './VolumeMenu';
 
 interface Share {
   participant: Participant;
-  track: VideoTrack;
+  /** Missing while we're not subscribed (not watching, or still subscribing). */
+  track: VideoTrack | undefined;
   height: number | undefined;
 }
 
@@ -39,16 +41,18 @@ export function VoiceStage({
   const sharing = useStore(voice.store, (s) => s.screenTrack !== null);
   const users = useStore(chat.store, (s) => s.users);
   const voiceState = useStore(chat.store, (s) => s.voice[channel.id]);
+  const unwatched = useStore(voice.store, (s) => s.unwatchedShares);
   const [featuredId, setFeaturedId] = useState<string | null>(null);
   const volumeMenu = useVolumeMenu();
 
   const participants: Participant[] = room
     ? [room.localParticipant, ...room.remoteParticipants.values()]
     : [];
+  // By publication, not track: a share we stopped watching has no track but is still live.
   const shares: Share[] = participants.flatMap((participant) => {
     const publication = participant.getTrackPublication(Track.Source.ScreenShare);
-    const track = publication?.videoTrack;
-    return track ? [{ participant, track, height: publication.dimensions?.height }] : [];
+    if (!publication) return [];
+    return [{ participant, track: publication.videoTrack, height: publication.dimensions?.height }];
   });
   const featured = shares.find((s) => s.participant.identity === featuredId) ?? shares[0];
 
@@ -70,7 +74,23 @@ export function VoiceStage({
       </header>
 
       <div className="stage-body">
-        {featured ? (
+        {featured && unwatched.has(featured.participant.identity) ? (
+          <div className="stage-empty">
+            <Icon name="eyeOff" size={48} />
+            <p>
+              Você parou de assistir à transmissão de{' '}
+              {userOf(featured.participant)?.displayName ?? featured.participant.name}.
+            </p>
+            <button
+              type="button"
+              className="button primary"
+              onClick={() => voice.setWatching(featured.participant.identity, true)}
+            >
+              <Icon name="eye" size={18} />
+              Assistir
+            </button>
+          </div>
+        ) : featured ? (
           <FeaturedShare
             share={featured}
             name={userOf(featured.participant)?.displayName ?? featured.participant.name ?? ''}
@@ -192,6 +212,7 @@ function FeaturedShare({ share, name, isLocal }: { share: Share; name: string; i
   const sharingAudio = useStore(voice.store, (s) => s.sharingAudio);
   const identity = share.participant.identity;
   const audioMuted = useStore(voice.store, (s) => s.mutedShares.has(identity));
+  const volume = useStore(settings, (s) => s.shareVolumes[identity] ?? 100);
   const hasAudio = isLocal
     ? sharingAudio
     : share.participant.getTrackPublication(Track.Source.ScreenShareAudio) !== undefined;
@@ -215,10 +236,11 @@ function FeaturedShare({ share, name, isLocal }: { share: Share; name: string; i
 
   useEffect(() => {
     const el = video.current;
-    if (!el) return;
-    share.track.attach(el);
+    const track = share.track;
+    if (!el || !track) return;
+    track.attach(el);
     return () => {
-      share.track.detach(el);
+      track.detach(el);
     };
   }, [share.track]);
 
@@ -261,16 +283,43 @@ function FeaturedShare({ share, name, isLocal }: { share: Share; name: string; i
       </div>
       <div className="featured-actions">
         {hasAudio && !isLocal && (
-          <button
-            type="button"
-            className="overlay-button"
-            aria-label={audioMuted ? 'Ouvir a transmissão' : 'Silenciar a transmissão'}
-            title={audioMuted ? 'Ouvir a transmissão' : 'Silenciar a transmissão'}
-            onClick={() => voice.toggleShareAudio(identity)}
-          >
-            <Icon name={audioMuted ? 'speakerOff' : 'speaker'} size={18} />
-          </button>
+          <div className="share-volume">
+            <input
+              type="range"
+              className="slider"
+              aria-label="Volume da transmissão"
+              title={`Volume da transmissão: ${volume}%`}
+              min={0}
+              max={200}
+              step={5}
+              value={audioMuted ? 0 : volume}
+              style={{ ['--fill' as string]: `${(audioMuted ? 0 : volume) / 2}%` }}
+              onChange={(e) => {
+                // Dragging the slider of a muted share unmutes it, like a video player.
+                if (audioMuted) voice.toggleShareAudio(identity);
+                voice.setShareVolume(Number(identity), Number(e.target.value));
+              }}
+            />
+            <button
+              type="button"
+              className="overlay-button"
+              aria-label={audioMuted ? 'Ouvir a transmissão' : 'Silenciar a transmissão'}
+              title={audioMuted ? 'Ouvir a transmissão' : 'Silenciar a transmissão'}
+              onClick={() => voice.toggleShareAudio(identity)}
+            >
+              <Icon name={audioMuted || volume === 0 ? 'speakerOff' : 'speaker'} size={18} />
+            </button>
+          </div>
         )}
+        <button
+          type="button"
+          className="overlay-button"
+          aria-label={isLocal ? 'Esconder a prévia' : 'Parar de assistir'}
+          title={isLocal ? 'Esconder a prévia' : 'Parar de assistir'}
+          onClick={() => voice.setWatching(identity, false)}
+        >
+          <Icon name="eyeOff" size={18} />
+        </button>
         {document.pictureInPictureEnabled && (
           <button
             type="button"

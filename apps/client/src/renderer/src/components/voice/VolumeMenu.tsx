@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent } from 'react';
+import { Track } from 'livekit-client';
 import { settings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
@@ -11,8 +12,9 @@ interface Target {
 }
 
 /**
- * Right-click menu with someone's voice volume (0–200 %, saved per user). Returns the
- * handler to put on `onContextMenu` and the element to render.
+ * Right-click menu with someone's voice volume and, while they share with audio in our room,
+ * their share's volume (both 0–200 %, saved per user). Returns the handler to put on
+ * `onContextMenu` and the element to render.
  */
 export function useVolumeMenu() {
   const [target, setTarget] = useState<Target | null>(null);
@@ -32,6 +34,12 @@ export function useVolumeMenu() {
 function VolumeMenu({ target, onClose }: { target: Target; onClose(): void }) {
   const { voice } = useSession();
   const volume = useStore(settings, (s) => s.userVolumes[String(target.userId)] ?? 100);
+  const shareVolume = useStore(settings, (s) => s.shareVolumes[String(target.userId)] ?? 100);
+  useStore(voice.store, (s) => s.version);
+  const sharesAudio =
+    voice.state.room?.remoteParticipants
+      .get(String(target.userId))
+      ?.getTrackPublication(Track.Source.ScreenShareAudio) !== undefined;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -41,7 +49,7 @@ function VolumeMenu({ target, onClose }: { target: Target; onClose(): void }) {
 
   // Keep the menu inside the window.
   const left = Math.min(target.x, window.innerWidth - 240);
-  const top = Math.min(target.y, window.innerHeight - 120);
+  const top = Math.min(target.y, window.innerHeight - (sharesAudio ? 200 : 120));
 
   return (
     <div
@@ -74,6 +82,33 @@ function VolumeMenu({ target, onClose }: { target: Target; onClose(): void }) {
           >
             Voltar para 100%
           </button>
+        )}
+        {sharesAudio && (
+          <>
+            <label className="field-label" htmlFor="share-volume">
+              VOLUME DA TRANSMISSÃO <span className="slider-value">{shareVolume}%</span>
+            </label>
+            <input
+              id="share-volume"
+              type="range"
+              className="slider"
+              min={0}
+              max={200}
+              step={5}
+              value={shareVolume}
+              style={{ ['--fill' as string]: `${shareVolume / 2}%` }}
+              onChange={(e) => voice.setShareVolume(target.userId, Number(e.target.value))}
+            />
+            {shareVolume !== 100 && (
+              <button
+                type="button"
+                className="link context-reset"
+                onClick={() => voice.setShareVolume(target.userId, 100)}
+              >
+                Voltar para 100%
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
