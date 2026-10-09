@@ -1,5 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IpcChannel, SYSTEM_AUDIO_PORT_MESSAGE, type LeTopeirasApi } from '../shared/ipc';
+import {
+  IpcChannel,
+  SYSTEM_AUDIO_PORT_MESSAGE,
+  type LeTopeirasApi,
+  type VoiceAction,
+} from '../shared/ipc';
 
 const api: LeTopeirasApi = {
   getAppInfo: () => ipcRenderer.invoke(IpcChannel.GetAppInfo),
@@ -27,6 +32,14 @@ const api: LeTopeirasApi = {
     return () => ipcRenderer.off(IpcChannel.PushToTalkState, handler);
   },
   recordPushToTalkKey: () => ipcRenderer.invoke(IpcChannel.PushToTalkRecordKey),
+  setKeybinds: (binds) => ipcRenderer.invoke(IpcChannel.KeybindsSet, binds),
+  recordKeybind: () => ipcRenderer.invoke(IpcChannel.KeybindRecord),
+  onVoiceAction: (listener) => {
+    const handler = (_event: unknown, action: VoiceAction) => listener(action);
+    ipcRenderer.on(IpcChannel.VoiceAction, handler);
+    return () => ipcRenderer.off(IpcChannel.VoiceAction, handler);
+  },
+  setTrayVoiceState: (state) => ipcRenderer.invoke(IpcChannel.TrayVoiceState, state),
   getReadyUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateGetReady),
   onUpdateReady: (listener) => {
     const handler = (_event: unknown, version: string) => listener(version);

@@ -25,6 +25,11 @@ export const IpcChannel = {
   PushToTalkRecordKey: 'ptt:record-key',
   /** main → renderer: the push-to-talk key went down (true) or up (false). */
   PushToTalkState: 'ptt:state',
+  KeybindsSet: 'keybinds:set',
+  KeybindRecord: 'keybinds:record',
+  /** main → renderer: a global shortcut or the tray asked for a voice action. */
+  VoiceAction: 'voice:action',
+  TrayVoiceState: 'tray:voice-state',
   UpdateGetReady: 'update:get-ready',
   UpdateInstall: 'update:install',
   /** main → renderer: an update finished downloading (payload: version). */
@@ -44,6 +49,32 @@ export type PushToTalkStatus = SystemAudioStatus;
 export interface PushToTalkKey {
   vk: number;
   name: string;
+}
+
+export type KeyModifier = 'ctrl' | 'shift' | 'alt';
+
+/** A global shortcut: a key or mouse button plus the exact modifiers held with it. */
+export interface Keybind {
+  vk: number;
+  mods: KeyModifier[];
+  /** "Ctrl + Shift + M", shown in settings. */
+  name: string;
+}
+
+/** What the tray menu and the global shortcuts can do. */
+export type VoiceAction = 'toggleMute' | 'toggleDeafen' | 'leave';
+
+export interface KeybindBinding {
+  action: Extract<VoiceAction, 'toggleMute' | 'toggleDeafen'>;
+  vk: number;
+  mods: KeyModifier[];
+}
+
+/** Drives the tray menu checkmarks and the icon's status dot. */
+export interface TrayVoiceState {
+  inVoice: boolean;
+  muted: boolean;
+  deafened: boolean;
 }
 
 export type SystemAudioStart =
@@ -113,6 +144,14 @@ export interface LeTopeirasApi {
    * Escape, after a timeout, or when another recording starts.
    */
   recordPushToTalkKey(): Promise<PushToTalkKey | null>;
+
+  /** Watches these shortcuts globally (replacing the previous ones); [] stops watching. */
+  setKeybinds(binds: KeybindBinding[]): Promise<void>;
+  /** Like `recordPushToTalkKey`, but Shift/Ctrl/Alt held with the key become its modifiers. */
+  recordKeybind(): Promise<Keybind | null>;
+  /** Called on a global shortcut or a tray menu click. Returns an unsubscribe function. */
+  onVoiceAction(listener: (action: VoiceAction) => void): () => void;
+  setTrayVoiceState(state: TrayVoiceState): Promise<void>;
 
   /** Version of an update that is downloaded and waiting for a restart, or null. */
   getReadyUpdate(): Promise<string | null>;

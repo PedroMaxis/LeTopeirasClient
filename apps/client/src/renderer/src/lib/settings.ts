@@ -4,6 +4,12 @@ import { Store } from './store';
 // Per-PC preferences. They don't need to roam between devices, so localStorage is enough.
 const KEY = 'letopeiras.settings';
 
+const keybindSchema = z.object({
+  vk: z.number().int().min(1).max(254),
+  mods: z.array(z.enum(['ctrl', 'shift', 'alt'])).max(3),
+  name: z.string(),
+});
+
 const settingsSchema = z.object({
   inputDeviceId: z.string().default('default'),
   outputDeviceId: z.string().default('default'),
@@ -30,6 +36,9 @@ const settingsSchema = z.object({
     .object({ vk: z.number().int().min(1).max(254), name: z.string() })
     .nullable()
     .default(null),
+  /** Global shortcuts (main/voice-controls.ts), work even with a game focused. */
+  muteKey: keybindSchema.nullable().default(null),
+  deafenKey: keybindSchema.nullable().default(null),
   defaultShareMode: z.enum(['motion', 'detail']).default('motion'),
   defaultShareQuality: z.enum(['720p30', '720p60', '1080p60']).default('1080p60'),
   /** Skip hardware H.265 for screen share even when the GPU offers it (lib/media.ts). */

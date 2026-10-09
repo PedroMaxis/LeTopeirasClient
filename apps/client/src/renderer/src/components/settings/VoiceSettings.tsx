@@ -239,6 +239,54 @@ function PushToTalkKeyField() {
   );
 }
 
+/** A global mute/deafen shortcut: record (with Ctrl/Shift/Alt) or clear. */
+function KeybindField(props: {
+  label: string;
+  setting: 'muteKey' | 'deafenKey';
+  disabled: boolean;
+}) {
+  const key = useStore(settings, (x) => x[props.setting]);
+  const [recording, setRecording] = useState(false);
+
+  const record = async () => {
+    setRecording(true);
+    try {
+      const next = await window.api.recordKeybind();
+      if (next) updateSettings({ [props.setting]: next });
+    } finally {
+      setRecording(false);
+    }
+  };
+
+  return (
+    <div className="field">
+      <div className="field-label">{props.label}</div>
+      <div className="ptt-key">
+        <span className={`ptt-key-name ${key ? '' : 'empty'}`}>
+          {recording ? 'Aperte o atalho…' : (key?.name ?? 'Nenhum atalho')}
+        </span>
+        {key && !recording && (
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => updateSettings({ [props.setting]: null })}
+          >
+            Remover
+          </button>
+        )}
+        <button
+          type="button"
+          className="button primary"
+          disabled={recording || props.disabled}
+          onClick={() => void record()}
+        >
+          {key ? 'Trocar' : 'Gravar atalho'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function VoiceSettings() {
   const s = useStore(settings, (x) => x);
   const pttStatus = usePushToTalkStatus();
@@ -321,6 +369,22 @@ export function VoiceSettings() {
         )}
       </div>
       {mode === 'ptt' && <PushToTalkKeyField />}
+      <div className="settings-divider" />
+      <KeybindField
+        label="ATALHO PARA MUTAR"
+        setting="muteKey"
+        disabled={pttStatus?.available === false}
+      />
+      <KeybindField
+        label="ATALHO PARA ENSURDECER"
+        setting="deafenKey"
+        disabled={pttStatus?.available === false}
+      />
+      <span className="field-hint">
+        {pttStatus?.available === false
+          ? `Indisponível neste PC: ${pttStatus.reason}.`
+          : 'Funcionam mesmo com um jogo em foco. Segure Ctrl, Shift ou Alt junto para combinar; Esc cancela.'}
+      </span>
       <div className="settings-divider" />
       <div className="toggle-list">
         <ToggleRow

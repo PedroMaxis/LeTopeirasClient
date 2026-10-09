@@ -12,6 +12,7 @@ import {
   type RemoteTrack,
   type RemoteTrackPublication,
 } from 'livekit-client';
+import type { KeybindBinding } from '../../../shared/ipc';
 import { errorMessage, type Api } from '../lib/api';
 import { MicProcessor, type MicOptions } from '../lib/audio';
 import { logEvent, watchShareStats } from '../lib/diagnostics';
@@ -75,6 +76,9 @@ const RERENDER_EVENTS = [
 
 const MAX_REJOIN_ATTEMPTS = 3;
 
+/** Both shortcuts at once, to tell whether they changed. */
+const keybindsKey = (s: Settings) => `${JSON.stringify(s.muteKey)}|${JSON.stringify(s.deafenKey)}`;
+
 const isShareSource = (source: Track.Source) =>
   source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio;
 
@@ -107,6 +111,8 @@ export class VoiceClient {
   private pingTimer: ReturnType<typeof setInterval> | undefined;
   private unsubscribeSettings: () => void;
   private unsubscribePushToTalk: () => void;
+  private unsubscribeVoiceAction: () => void;
+  private unsubscribeTray: () => void;
   /** Push-to-talk key state from main; kept here so a new mic processor starts in sync. */
   private pttDown = false;
   private joinSeq = 0;
@@ -120,6 +126,7 @@ export class VoiceClient {
     let previous = settings.get();
     this.unsubscribeSettings = settings.subscribe(() => {
       const next = settings.get();
+      if (keybindsKey(previous) !== keybindsKey(next)) void this.syncKeybinds(next);
       void this.applySettings(previous, next);
       previous = next;
     });
@@ -127,6 +134,25 @@ export class VoiceClient {
       this.pttDown = down;
       this.micProcessor?.setPushToTalkDown(down);
     });
+
+    // Global shortcuts and the tray menu.
+    void this.syncKeybinds(previous);
+    this.unsubscribeVoiceAction = window.api.onVoiceAction((action) => {
+      if (action === 'toggleMute') void this.toggleMute();
+      else if (action === 'toggleDeafen') void this.toggleDeafen();
+      else void this.leave();
+    });
+    let tray = '';
+    const syncTray = () => {
+      const { channelId, muted, deafened } = this.state;
+      const state = { inVoice: channelId !== null, muted, deafened };
+      const key = JSON.stringify(state);
+      if (key === tray) return;
+      tray = key;
+      void window.api.setTrayVoiceState(state);
+    };
+    syncTray();
+    this.unsubscribeTray = this.store.subscribe(syncTray);
   }
 
   get state(): VoiceState {
@@ -328,6 +354,10 @@ export class VoiceClient {
   dispose(): void {
     this.unsubscribeSettings();
     this.unsubscribePushToTalk();
+    this.unsubscribeVoiceAction();
+    this.unsubscribeTray();
+    void window.api.setKeybinds([]);
+    void window.api.setTrayVoiceState({ inVoice: false, muted: false, deafened: false });
     void this.leave();
     this.mixer.close();
     this.audioContainer.remove();
@@ -471,6 +501,15 @@ export class VoiceClient {
       Track.Source.Microphone,
     )?.track;
     return track instanceof LocalAudioTrack ? track : undefined;
+  }
+
+  private async syncKeybinds(s: Settings): Promise<void> {
+    const binds: KeybindBinding[] = [];
+    if (s.muteKey) binds.push({ action: 'toggleMute', vk: s.muteKey.vk, mods: s.muteKey.mods });
+    if (s.deafenKey) {
+      binds.push({ action: 'toggleDeafen', vk: s.deafenKey.vk, mods: s.deafenKey.mods });
+    }
+    await window.api.setKeybinds(binds);
   }
 
   /** Watches the push-to-talk key only while in a room with push-to-talk on. */
