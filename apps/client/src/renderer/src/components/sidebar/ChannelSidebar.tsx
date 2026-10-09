@@ -229,15 +229,10 @@ function VoiceMember({
   const user = useStore(chat.store, (s) => s.users[participant.userId]);
   const roles = useStore(chat.store, (s) => s.roles);
   // Speaking is only known for the room we're connected to.
-  useStore(voice.store, (s) => s.version);
-  const { room, channelId: inVoice } = voice.state;
-  const lkParticipant =
-    room && inVoice === channelId
-      ? room.localParticipant.identity === String(participant.userId)
-        ? room.localParticipant
-        : room.remoteParticipants.get(String(participant.userId))
-      : undefined;
-  const speaking = lkParticipant?.isSpeaking ?? false;
+  const speaking = useStore(
+    voice.store,
+    (s) => s.channelId === channelId && s.speaking.has(String(participant.userId)),
+  );
   const volumeMenu = useVolumeMenu();
 
   return (

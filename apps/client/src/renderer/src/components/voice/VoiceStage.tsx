@@ -88,6 +88,7 @@ export function VoiceStage({
   const deafened = useStore(voice.store, (s) => s.deafened);
   const sharing = useStore(voice.store, (s) => s.screenTrack !== null);
   const shareWatch = useStore(voice.store, (s) => s.shareWatch);
+  const speaking = useStore(voice.store, (s) => s.speaking);
   const autoWatch = useStore(settings, (s) => s.autoWatchShares);
   const users = useStore(chat.store, (s) => s.users);
   const voiceState = useStore(chat.store, (s) => s.voice[channel.id]);
@@ -136,6 +137,7 @@ export function VoiceStage({
         muted={isLocal ? muted || deafened : (state?.muted ?? !p.isMicrophoneEnabled)}
         deafened={isLocal ? deafened : (state?.deafened ?? false)}
         live={live}
+        speaking={speaking.has(p.identity)}
         style={strip ? undefined : tile}
         onClick={live ? () => setFocusedId(p.identity) : undefined}
         onContextMenu={volumeMenu.open(Number(p.identity), nameOf(p))}
@@ -292,6 +294,7 @@ function ParticipantTile(props: {
   muted: boolean;
   deafened: boolean;
   live: boolean;
+  speaking: boolean;
   style?: { width: number; height: number } | undefined;
   onClick?: (() => void) | undefined;
   onContextMenu(event: MouseEvent): void;
@@ -299,7 +302,7 @@ function ParticipantTile(props: {
   return (
     <button
       type="button"
-      className={`stage-tile ${props.participant.isSpeaking ? 'speaking' : ''} ${props.onClick ? 'live' : ''}`}
+      className={`stage-tile ${props.speaking ? 'speaking' : ''} ${props.onClick ? 'live' : ''}`}
       style={props.style}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}

@@ -5,6 +5,13 @@ import { createNoiseSuppressor, NOISE_SAMPLE_RATE } from './noise';
 /** dBFS of an RMS level; silence maps to -100. */
 export const toDb = (rms: number) => (rms > 0 ? Math.max(-100, 20 * Math.log10(rms)) : -100);
 
+/** Root mean square of a block of samples. */
+export function rms(samples: Float32Array): number {
+  let sum = 0;
+  for (const s of samples) sum += s * s;
+  return Math.sqrt(sum / samples.length);
+}
+
 export interface MicOptions {
   /** Input volume, 1 = unchanged. */
   gain: number;
@@ -171,10 +178,7 @@ export async function startMicMeter(
   const samples = new Float32Array(analyser.fftSize);
   const timer = setInterval(() => {
     analyser.getFloatTimeDomainData(samples);
-    let sum = 0;
-    for (const s of samples) sum += s * s;
-    const rms = Math.sqrt(sum / samples.length);
-    onLevel(levelFromDb(toDb(rms)));
+    onLevel(levelFromDb(toDb(rms(samples))));
   }, 33);
 
   return () => {

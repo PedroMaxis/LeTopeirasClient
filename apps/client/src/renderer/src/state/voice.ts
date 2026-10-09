@@ -14,7 +14,7 @@ import {
 } from 'livekit-client';
 import type { KeybindBinding } from '../../../shared/ipc';
 import { errorMessage, type Api } from '../lib/api';
-import { levelFromDb, MicProcessor, startMicMeter, type MicOptions } from '../lib/audio';
+import { levelFromDb, MicProcessor, rms, startMicMeter, toDb, type MicOptions } from '../lib/audio';
 import { logEvent, watchShareStats } from '../lib/diagnostics';
 import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
@@ -56,6 +56,12 @@ export interface VoiceState {
    * `isWatching`: our own preview shows, others' shares follow `autoWatchShares`.
    */
   shareWatch: ReadonlyMap<string, boolean>;
+  /**
+   * Identities talking right now, measured here from audio levels (our processed mic, the
+   * others' decoded voices) instead of LiveKit's server-side speaker updates, which arrive
+   * about half a second late.
+   */
+  speaking: ReadonlySet<string>;
   /** We're muted but the mic hears speech: shows "Você está mutado" for a few seconds. */
   mutedSpeaking: boolean;
   /** Round trip to the LiveKit server, for the "Voz conectada" panel. */
@@ -75,11 +81,15 @@ const RERENDER_EVENTS = [
   RoomEvent.TrackUnmuted,
   RoomEvent.LocalTrackPublished,
   RoomEvent.LocalTrackUnpublished,
-  RoomEvent.ActiveSpeakersChanged,
   RoomEvent.ParticipantNameChanged,
 ] as const;
 
 const MAX_REJOIN_ATTEMPTS = 3;
+
+/** Speaking indicator: above this level, and kept on this long after the last loud block. */
+const SPEAKING_DB = -48;
+const SPEAKING_HOLD_MS = 250;
+const SPEAKING_POLL_MS = 50;
 
 /** "Você está mutado": speech above about -40 dBFS for this long, at most every cooldown. */
 const MUTED_SPEECH_LEVEL = levelFromDb(-40);
@@ -118,6 +128,7 @@ export class VoiceClient {
     sharingAudio: false,
     mutedShares: new Set(),
     shareWatch: new Map(),
+    speaking: new Set(),
     mutedSpeaking: false,
     pingMs: null,
     version: 0,
@@ -135,6 +146,16 @@ export class VoiceClient {
   private unsubscribePushToTalk: () => void;
   private unsubscribeVoiceAction: () => void;
   private unsubscribeTray: () => void;
+  private speakingTimer: ReturnType<typeof setInterval> | undefined;
+  /** Last time each identity was above the speaking level. */
+  private readonly lastLoud = new Map<string, number>();
+  private localLevel: {
+    context: AudioContext;
+    track: MediaStreamTrack;
+    source: MediaStreamAudioSourceNode;
+    analyser: AnalyserNode;
+    samples: Float32Array<ArrayBuffer>;
+  } | null = null;
   /** Stops the meter that listens for speech while muted; set while it runs. */
   private stopMutedMeter: (() => void) | null = null;
   private mutedMeterOn = false;
@@ -212,6 +233,7 @@ export class VoiceClient {
     }
 
     this.store.set({ room, status: 'connected' });
+    this.speakingTimer = setInterval(() => this.updateSpeaking(), SPEAKING_POLL_MS);
     for (const participant of room.remoteParticipants.values()) {
       for (const publication of participant.trackPublications.values()) {
         this.enforceWatch(publication, participant);
@@ -397,7 +419,6 @@ export class VoiceClient {
 
   private bindRoom(room: Room, channelId: number, attempt: number): void {
     const bump = () => this.store.set((s) => ({ version: s.version + 1 }));
-    // ActiveSpeakersChanged covers isSpeaking for everyone, including us.
     for (const event of RERENDER_EVENTS) room.on(event, bump);
 
     room.on(
@@ -484,6 +505,9 @@ export class VoiceClient {
   }
 
   private reset(): void {
+    clearInterval(this.speakingTimer);
+    this.lastLoud.clear();
+    this.closeLocalLevel();
     this.systemAudio?.capture.stop();
     this.systemAudio = null;
     clearInterval(this.pingTimer);
@@ -499,6 +523,7 @@ export class VoiceClient {
       screenTrack: null,
       sharingAudio: false,
       shareWatch: new Map(),
+      speaking: new Set(),
       pingMs: null,
     });
     void this.syncMutedMeter(settings.get());
@@ -532,6 +557,62 @@ export class VoiceClient {
       Track.Source.Microphone,
     )?.track;
     return track instanceof LocalAudioTrack ? track : undefined;
+  }
+
+  private updateSpeaking(): void {
+    const { room, muted, deafened } = this.state;
+    if (!room) return;
+    const now = Date.now();
+    const loud = (identity: string, db: number) => {
+      if (db >= SPEAKING_DB) this.lastLoud.set(identity, now);
+    };
+    // The processed track: after input volume, voice gate and push-to-talk.
+    if (!muted && !deafened) loud(room.localParticipant.identity, this.localMicLevel());
+    for (const [id, tag] of this.audioSources) {
+      if (!tag.screen) loud(tag.identity, this.mixer.level(id));
+    }
+    const speaking = new Set<string>();
+    for (const [identity, at] of this.lastLoud) {
+      if (now - at <= SPEAKING_HOLD_MS) speaking.add(identity);
+      else this.lastLoud.delete(identity);
+    }
+    const current = this.state.speaking;
+    if (speaking.size !== current.size || [...speaking].some((id) => !current.has(id))) {
+      this.store.set({ speaking });
+    }
+  }
+
+  /** Level of our mic as sent (dBFS); follows the track when LiveKit or a processor swaps it. */
+  private localMicLevel(): number {
+    const track = this.micTrack()?.mediaStreamTrack;
+    if (!track || track.readyState === 'ended') return -100;
+    if (this.localLevel?.track !== track) {
+      this.closeLocalLevel();
+      const context = new AudioContext();
+      const source = context.createMediaStreamSource(new MediaStream([track]));
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+      // Created outside a click; a suspended context would only ever read silence.
+      if (context.state === 'suspended') void context.resume();
+      this.localLevel = {
+        context,
+        track,
+        source,
+        analyser,
+        samples: new Float32Array(analyser.fftSize),
+      };
+    }
+    const { analyser, samples } = this.localLevel;
+    analyser.getFloatTimeDomainData(samples);
+    return toDb(rms(samples));
+  }
+
+  private closeLocalLevel(): void {
+    if (!this.localLevel) return;
+    this.localLevel.source.disconnect();
+    void this.localLevel.context.close();
+    this.localLevel = null;
   }
 
   /**

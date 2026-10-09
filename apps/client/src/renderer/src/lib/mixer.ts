@@ -1,3 +1,7 @@
+import { rms, toDb } from './audio';
+
+const LEVEL_FFT_SIZE = 512;
+
 /**
  * Plays every remote voice and screen share audio through one AudioContext, so each source
  * can have its own volume (up to 200%, which <audio>.volume can't do) and the output device
@@ -8,8 +12,14 @@ export class AudioMixer {
   private master: GainNode | null = null;
   private readonly sources = new Map<
     string,
-    { source: MediaStreamAudioSourceNode; gain: GainNode; keeper: HTMLMediaElement }
+    {
+      source: MediaStreamAudioSourceNode;
+      gain: GainNode;
+      analyser: AnalyserNode;
+      keeper: HTMLMediaElement;
+    }
   >();
+  private samples = new Float32Array(LEVEL_FFT_SIZE);
   private sinkId = 'default';
   private masterGain = 1;
 
@@ -41,7 +51,11 @@ export class AudioMixer {
     const gainNode = context.createGain();
     gainNode.gain.value = gain;
     source.connect(gainNode).connect(master);
-    this.sources.set(id, { source, gain: gainNode, keeper });
+    // Before the gain, so per-user volume and deafen don't change who looks like speaking.
+    const analyser = context.createAnalyser();
+    analyser.fftSize = LEVEL_FFT_SIZE;
+    source.connect(analyser);
+    this.sources.set(id, { source, gain: gainNode, analyser, keeper });
     if (context.state === 'suspended') void context.resume();
   }
 
@@ -50,8 +64,17 @@ export class AudioMixer {
     if (!entry) return;
     entry.source.disconnect();
     entry.gain.disconnect();
+    entry.analyser.disconnect();
     entry.keeper.remove();
     this.sources.delete(id);
+  }
+
+  /** Current level of a source in dBFS (-100 when silent or unknown). */
+  level(id: string): number {
+    const entry = this.sources.get(id);
+    if (!entry) return -100;
+    entry.analyser.getFloatTimeDomainData(this.samples);
+    return toDb(rms(this.samples));
   }
 
   setGain(id: string, gain: number): void {
