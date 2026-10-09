@@ -465,8 +465,9 @@ export class VoiceClient {
 
   private gainFor(tag: { identity: string; screen: boolean }): number {
     const { deafened, mutedShares } = this.state;
-    if (deafened) return 0;
+    // Deafen silences voices only; a share's audio has its own mute button.
     if (tag.screen) return mutedShares.has(tag.identity) ? 0 : 1;
+    if (deafened) return 0;
     return (settings.get().userVolumes[tag.identity] ?? 100) / 100;
   }
 
