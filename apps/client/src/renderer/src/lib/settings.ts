@@ -39,6 +39,8 @@ const settingsSchema = z.object({
   /** Global shortcuts (main/voice-controls.ts), work even with a game focused. */
   muteKey: keybindSchema.nullable().default(null),
   deafenKey: keybindSchema.nullable().default(null),
+  /** Subscribe to others' screen shares as soon as they start (otherwise click "Assistir"). */
+  autoWatchShares: z.boolean().default(false),
   defaultShareMode: z.enum(['motion', 'detail']).default('motion'),
   defaultShareQuality: z.enum(['720p30', '720p60', '1080p60']).default('1080p60'),
   /** Skip hardware H.265 for screen share even when the GPU offers it (lib/media.ts). */

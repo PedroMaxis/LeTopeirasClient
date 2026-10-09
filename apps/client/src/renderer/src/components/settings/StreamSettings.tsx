@@ -67,6 +67,12 @@ export function StreamSettings() {
         checked={s.preferH264}
         onChange={(preferH264) => updateSettings({ preferH264 })}
       />
+      <ToggleRow
+        label="Assistir transmissões automaticamente"
+        description="Desligado, a transmissão dos outros só aparece quando você clica em Assistir, e até lá não gasta sua internet."
+        checked={s.autoWatchShares}
+        onChange={(autoWatchShares) => updateSettings({ autoWatchShares })}
+      />
       <div className="settings-divider" />
       <ToggleRow
         label="Iniciar com o Windows"

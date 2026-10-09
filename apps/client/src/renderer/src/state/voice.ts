@@ -51,8 +51,11 @@ export interface VoiceState {
   sharingAudio: boolean;
   /** Identities whose screen share audio we muted locally. */
   mutedShares: ReadonlySet<string>;
-  /** Identities whose screen share we stopped watching (unsubscribed until they share again). */
-  unwatchedShares: ReadonlySet<string>;
+  /**
+   * Explicit watch/stop choices per identity, until that share ends. Without one, see
+   * `isWatching`: our own preview shows, others' shares follow `autoWatchShares`.
+   */
+  shareWatch: ReadonlyMap<string, boolean>;
   /** We're muted but the mic hears speech: shows "Você está mutado" for a few seconds. */
   mutedSpeaking: boolean;
   /** Round trip to the LiveKit server, for the "Voz conectada" panel. */
@@ -90,6 +93,16 @@ const keybindsKey = (s: Settings) => `${JSON.stringify(s.muteKey)}|${JSON.string
 const isShareSource = (source: Track.Source) =>
   source === Track.Source.ScreenShare || source === Track.Source.ScreenShareAudio;
 
+/** Whether we watch someone's screen share (pure, so the UI can use it with store slices). */
+export function isWatching(
+  shareWatch: ReadonlyMap<string, boolean>,
+  identity: string,
+  isLocal: boolean,
+  autoWatch: boolean,
+): boolean {
+  return shareWatch.get(identity) ?? (isLocal || autoWatch);
+}
+
 /** Owns the LiveKit room of the voice channel we are in (at most one). */
 export class VoiceClient {
   readonly store = new Store<VoiceState>({
@@ -104,7 +117,7 @@ export class VoiceClient {
     shareAudio: true,
     sharingAudio: false,
     mutedShares: new Set(),
-    unwatchedShares: new Set(),
+    shareWatch: new Map(),
     mutedSpeaking: false,
     pingMs: null,
     version: 0,
@@ -199,6 +212,11 @@ export class VoiceClient {
     }
 
     this.store.set({ room, status: 'connected' });
+    for (const participant of room.remoteParticipants.values()) {
+      for (const publication of participant.trackPublications.values()) {
+        this.enforceWatch(publication, participant);
+      }
+    }
     void this.syncMutedMeter(settings.get());
     if (attempt === 0) playSound('join');
     // No room.startAudio(): Electron doesn't block autoplay, and startAudio unmutes every
@@ -301,16 +319,12 @@ export class VoiceClient {
   }
 
   /**
-   * Stops or resumes watching someone's screen share. A remote share is unsubscribed (video
-   * and audio), so it costs no bandwidth; our own just stops showing the preview.
+   * Starts or stops watching someone's screen share. A remote share is (un)subscribed, video
+   * and audio, so one we don't watch costs no bandwidth; our own only shows or hides the
+   * preview.
    */
   setWatching(identity: string, watching: boolean): void {
-    this.store.set((s) => {
-      const unwatchedShares = new Set(s.unwatchedShares);
-      if (watching) unwatchedShares.delete(identity);
-      else unwatchedShares.add(identity);
-      return { unwatchedShares };
-    });
+    this.store.set((s) => ({ shareWatch: new Map(s.shareWatch).set(identity, watching) }));
     const participant = this.state.room?.remoteParticipants.get(identity);
     for (const source of [Track.Source.ScreenShare, Track.Source.ScreenShareAudio]) {
       participant?.getTrackPublication(source)?.setSubscribed(watching);
@@ -389,7 +403,9 @@ export class VoiceClient {
     room.on(
       RoomEvent.TrackSubscribed,
       (track: RemoteTrack, publication: RemoteTrackPublication, participant: RemoteParticipant) => {
-        if (track.kind !== Track.Kind.Audio) return;
+        // A share subscribed before we could say no (e.g. right after joining).
+        this.enforceWatch(publication, participant);
+        if (!publication.isDesired || track.kind !== Track.Kind.Audio) return;
         const tag = {
           identity: participant.identity,
           screen: publication.source === Track.Source.ScreenShareAudio,
@@ -412,16 +428,13 @@ export class VoiceClient {
     room.on(RoomEvent.ParticipantConnected, () => playSound('userJoin'));
     room.on(RoomEvent.ParticipantDisconnected, (participant: RemoteParticipant) => {
       playSound('userLeave');
-      if (this.isUnwatched(participant.identity)) this.forgetUnwatched(participant.identity);
+      this.forgetWatch(participant.identity);
     });
     room.on(
       RoomEvent.TrackPublished,
       (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
         if (publication.source === Track.Source.ScreenShare) playSound('streamStart');
-        // Share audio published after we stopped watching (or a resumed connection) stays off.
-        if (isShareSource(publication.source) && this.isUnwatched(participant.identity)) {
-          publication.setSubscribed(false);
-        }
+        this.enforceWatch(publication, participant);
       },
     );
     room.on(
@@ -429,8 +442,8 @@ export class VoiceClient {
       (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
         if (publication.source !== Track.Source.ScreenShare) return;
         playSound('streamStop');
-        // Their next share starts watched again.
-        if (this.isUnwatched(participant.identity)) this.forgetUnwatched(participant.identity);
+        // Their next share starts from the default again.
+        this.forgetWatch(participant.identity);
       },
     );
 
@@ -485,7 +498,7 @@ export class VoiceClient {
       room: null,
       screenTrack: null,
       sharingAudio: false,
-      unwatchedShares: new Set(),
+      shareWatch: new Map(),
       pingMs: null,
     });
     void this.syncMutedMeter(settings.get());
@@ -619,15 +632,27 @@ export class VoiceClient {
     await track.setProcessor(this.micProcessor);
   }
 
-  private isUnwatched(identity: string): boolean {
-    return this.state.unwatchedShares.has(identity);
+  /**
+   * The room auto-subscribes to everything; a share we don't watch is unsubscribed as soon as
+   * it shows up (published, subscribed, or already there when we join).
+   */
+  private enforceWatch(publication: RemoteTrackPublication, participant: RemoteParticipant): void {
+    if (!isShareSource(publication.source)) return;
+    const watching = isWatching(
+      this.state.shareWatch,
+      participant.identity,
+      false,
+      settings.get().autoWatchShares,
+    );
+    if (!watching && publication.isDesired) publication.setSubscribed(false);
   }
 
-  private forgetUnwatched(identity: string): void {
+  private forgetWatch(identity: string): void {
+    if (!this.state.shareWatch.has(identity)) return;
     this.store.set((s) => {
-      const unwatchedShares = new Set(s.unwatchedShares);
-      unwatchedShares.delete(identity);
-      return { unwatchedShares };
+      const shareWatch = new Map(s.shareWatch);
+      shareWatch.delete(identity);
+      return { shareWatch };
     });
   }
 

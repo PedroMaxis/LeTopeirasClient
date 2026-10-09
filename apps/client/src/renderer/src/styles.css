@@ -1381,37 +1381,87 @@ a:hover {
   min-height: 0;
 }
 
-.featured,
-.stage-empty {
-  position: relative;
+/* Grid: tiles sized in JS (useTileSize) to the largest 16:9 that fits. */
+.stage-grid {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.stage-focus {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.share-tile {
+  position: relative;
+  flex: none;
   border-radius: 8px;
-  background: var(--bg-thumb);
+  overflow: hidden;
+  background: #000;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  cursor: pointer;
 }
 
-.stage-empty {
-  flex-direction: column;
-  gap: 10px;
-  color: var(--text-muted);
-  font-size: 14px;
-  text-align: center;
-  padding: 16px;
+.share-tile.large {
+  flex: 1;
+  cursor: default;
 }
 
-.featured video {
+.share-tile.small {
+  width: 235px;
+  height: 132px;
+}
+
+.share-tile.not-watching {
+  background: var(--bg-tile);
+}
+
+.share-tile:fullscreen {
+  border-radius: 0;
+}
+
+.share-tile video {
   width: 100%;
   height: 100%;
   object-fit: contain;
   background: #000;
 }
 
-.featured:fullscreen {
-  border-radius: 0;
+.share-tile-idle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.share-tile.small .featured-top {
+  left: 8px;
+  top: 8px;
+}
+
+.share-tile.small .featured-name {
+  left: 8px;
+  bottom: 8px;
+  font-size: 12px;
+}
+
+/* Grid tiles only show their buttons on hover, so several shares stay readable. */
+.share-tile.grid .featured-actions {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.share-tile.grid:hover .featured-actions,
+.share-tile.grid:focus-within .featured-actions {
+  opacity: 1;
 }
 
 .featured-top {
@@ -1428,6 +1478,12 @@ a:hover {
   left: 12px;
   bottom: 12px;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .featured-actions {
@@ -1508,7 +1564,7 @@ a:hover {
   opacity: 1;
 }
 
-.stage-tiles {
+.stage-strip {
   display: flex;
   gap: 12px;
   flex: none;
@@ -1528,6 +1584,12 @@ a:hover {
   align-items: center;
   justify-content: center;
   cursor: default;
+}
+
+.stage-grid .stage-tile {
+  flex: none;
+  min-width: 0;
+  max-width: none;
 }
 
 .stage-tile.live {

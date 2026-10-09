@@ -81,6 +81,14 @@ const paths = {
       <path d="M4 4l16 16" />
     </>
   ),
+  grid: (
+    <>
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" />
+    </>
+  ),
   pip: (
     <>
       <rect x="3" y="5" width="18" height="14" rx="2" />
