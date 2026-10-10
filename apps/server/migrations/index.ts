@@ -175,4 +175,20 @@ export const migrations: Migration[] = [
       END;
     `,
   },
+  {
+    version: 7,
+    name: 'link-previews',
+    sql: `
+      -- JSON array of the message's link previews (null until fetched).
+      ALTER TABLE messages ADD COLUMN embeds TEXT;
+
+      -- Previews by URL, so a link posted again isn't fetched again. data is null when the
+      -- fetch failed or found nothing (retried after a while).
+      CREATE TABLE link_previews (
+        url        TEXT    PRIMARY KEY,
+        data       TEXT,
+        fetched_at INTEGER NOT NULL
+      );
+    `,
+  },
 ];

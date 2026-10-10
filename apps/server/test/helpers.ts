@@ -12,6 +12,7 @@ import { openDatabase } from '../src/db';
 import { hashPassword } from '../src/lib/crypto';
 import { createInvite } from '../src/repo/invites';
 import { createUser } from '../src/repo/users';
+import type { PreviewFetcher } from '../src/services/embeds';
 
 export const testConfig: ServerConfig = {
   host: '127.0.0.1',
@@ -30,10 +31,17 @@ export const testConfig: ServerConfig = {
 
 export const PASSWORD = 'correct horse battery';
 
-/** A fresh app over an in-memory database (seeded with #geral = 1 and voice Geral = 2). */
-export async function createTestApp() {
+/**
+ * A fresh app over an in-memory database (seeded with #geral = 1 and voice Geral = 2).
+ * Link previews never touch the network: they come from `fetchPreview` (none by default).
+ */
+export async function createTestApp(options: { fetchPreview?: PreviewFetcher } = {}) {
   const db = openDatabase(':memory:');
-  const app = buildApp({ config: testConfig, db });
+  const app = buildApp({
+    config: testConfig,
+    db,
+    fetchPreview: options.fetchPreview ?? (() => Promise.resolve(null)),
+  });
   await app.ready();
 
   const admin = createUser(db, {

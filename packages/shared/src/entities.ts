@@ -59,6 +59,22 @@ export const reactionSchema = z.object({
 });
 export type Reaction = z.infer<typeof reactionSchema>;
 
+/** Preview of a link in a message, fetched by the server. */
+export const embedSchema = z.object({
+  url: z.string(),
+  /** `youtube`: a video (thumbnail + `videoId`); `image`: the link is an image itself. */
+  kind: z.enum(['link', 'youtube', 'image']),
+  title: z.string().nullable(),
+  description: z.string().nullable(),
+  siteName: z.string().nullable(),
+  /** http(s) URL of a picture to show. */
+  image: z.string().nullable(),
+  /** The site's theme color (#rrggbb), for the side bar. */
+  color: z.string().nullable(),
+  videoId: z.string().nullable(),
+});
+export type Embed = z.infer<typeof embedSchema>;
+
 export const messageSchema = z.object({
   id: idSchema,
   channelId: idSchema,
@@ -77,6 +93,8 @@ export const messageSchema = z.object({
   replyTo: z.object({ authorId: idSchema, content: z.string() }).nullable().default(null),
   /** By the time each emoji was first used. */
   reactions: z.array(reactionSchema).default([]),
+  /** Link previews; filled in shortly after sending (a `message.updated` follows). */
+  embeds: z.array(embedSchema).default([]),
 });
 export type Message = z.infer<typeof messageSchema>;
 

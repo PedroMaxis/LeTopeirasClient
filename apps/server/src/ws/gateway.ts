@@ -4,6 +4,7 @@ import {
   WsCloseCode,
   type Channel,
   type ClientEvent,
+  type Message,
   type PresenceStatus,
   type ReadyEventData,
   type ServerEvent,
@@ -51,6 +52,8 @@ export interface GatewayDeps {
   db: Db;
   voice: VoiceStateStore;
   log: FastifyBaseLogger;
+  /** A message was sent or edited (link previews get fetched). */
+  onMessageSaved?: (message: Message) => void;
 }
 
 /**
@@ -337,6 +340,7 @@ export class Gateway {
           type: 'message.created',
           data: nonce === undefined ? { message } : { message, nonce },
         });
+        this.deps.onMessageSaved?.(message);
         return;
       }
 
@@ -346,6 +350,7 @@ export class Gateway {
           type: 'message.updated',
           data: { message },
         });
+        this.deps.onMessageSaved?.(message);
         return;
       }
 

@@ -4,6 +4,7 @@ import type { ServerConfig } from '../config';
 import type { Db } from '../db';
 import { forbidden, unauthorized } from '../lib/errors';
 import { authenticate, type AuthContext } from '../services/auth';
+import type { EmbedService } from '../services/embeds';
 import type { VoiceStateStore } from '../services/voice-state';
 import type { Gateway } from '../ws/gateway';
 
@@ -13,6 +14,7 @@ export interface AppContext {
   db: Db;
   voice: VoiceStateStore;
   gateway: Gateway;
+  embeds: EmbedService;
   webhookReceiver: WebhookReceiver;
 }
 

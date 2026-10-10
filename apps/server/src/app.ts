@@ -10,6 +10,9 @@ import { channelRoutes } from './http/routes/channels';
 import { userRoutes } from './http/routes/users';
 import { voiceRoutes } from './http/routes/voice';
 import { AppError } from './lib/errors';
+import { findChannel } from './repo/channels';
+import { EmbedService, type PreviewFetcher } from './services/embeds';
+import { fetchPreview } from './services/link-preview';
 import { createWebhookReceiver } from './services/livekit';
 import { VoiceStateStore } from './services/voice-state';
 import { Gateway } from './ws/gateway';
@@ -17,25 +20,46 @@ import { Gateway } from './ws/gateway';
 export interface AppOptions extends FastifyServerOptions {
   config: ServerConfig;
   db: Db;
+  /** Replaces the network fetch of link previews (tests). */
+  fetchPreview?: PreviewFetcher;
 }
 
 const apiError = (code: string, message: string): ApiError => ({ error: { code, message } });
 
-export function buildApp({ config, db, ...fastifyOptions }: AppOptions) {
+export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions }: AppOptions) {
   const app = Fastify({ bodyLimit: 64 * 1024, ...fastifyOptions });
 
   const voice = new VoiceStateStore();
-  const gateway = new Gateway({ db, voice, log: app.log });
+  const gateway: Gateway = new Gateway({
+    db,
+    voice,
+    log: app.log,
+    onMessageSaved: (message) => embeds.schedule(message),
+  });
+  const embeds = new EmbedService({
+    db,
+    fetchPreview: fetcher ?? fetchPreview,
+    log: app.log,
+    onUpdated: (message) => {
+      const channel = findChannel(db, message.channelId);
+      if (channel)
+        gateway.broadcastToChannel(channel, { type: 'message.updated', data: { message } });
+    },
+  });
   const ctx: AppContext = {
     config,
     db,
     voice,
     gateway,
+    embeds,
     webhookReceiver: createWebhookReceiver(config.livekit),
   };
   app.decorate('ctx', ctx);
   app.decorateRequest('auth', null);
-  app.addHook('onClose', async () => gateway.close());
+  app.addHook('onClose', async () => {
+    embeds.close();
+    gateway.close();
+  });
 
   // Auth is a bearer token, never a cookie, so reflecting any origin is safe.
   app.register(cors, { origin: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] });

@@ -1,4 +1,5 @@
-import { LIMITS, type Message, type Reaction } from '@letopeiras/shared';
+import { embedSchema, LIMITS, type Embed, type Message, type Reaction } from '@letopeiras/shared';
+import { z } from 'zod';
 import { expectRow, type Db } from '../db';
 
 interface MessageRow {
@@ -13,6 +14,28 @@ interface MessageRow {
   reply_to_id: number | null;
   reply_author_id: number | null;
   reply_content: string | null;
+  embeds: string | null;
+}
+
+const embedsSchema = z.array(embedSchema);
+
+/** Stored embeds; anything unreadable just shows no previews. */
+function parseEmbeds(json: string | null): Embed[] {
+  if (!json) return [];
+  try {
+    return embedsSchema.parse(JSON.parse(json));
+  } catch {
+    return [];
+  }
+}
+
+/** Replaces a message's link previews. False if the message is gone. */
+export function setMessageEmbeds(db: Db, id: number, embeds: Embed[]): boolean {
+  return (
+    db
+      .prepare('UPDATE messages SET embeds = ? WHERE id = ?')
+      .run(embeds.length ? JSON.stringify(embeds) : null, id).changes === 1
+  );
 }
 
 const toMessage = (row: MessageRow, reactions: Reaction[] = []): Message => ({
@@ -30,6 +53,7 @@ const toMessage = (row: MessageRow, reactions: Reaction[] = []): Message => ({
       ? { authorId: row.reply_author_id, content: row.reply_content }
       : null,
   reactions,
+  embeds: parseEmbeds(row.embeds),
 });
 
 // The replied-to message comes along as a snippet (null once it's deleted).
