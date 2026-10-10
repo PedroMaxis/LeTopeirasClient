@@ -14,7 +14,21 @@ export const LIMITS = {
   messageMax: 2000,
   historyPageDefault: 50,
   historyPageMax: 100,
+  /** Different emojis on one message (adding one that's already there is always fine). */
+  reactionsPerMessage: 20,
+  /** Characters of the original message quoted in a reply. */
+  replySnippetMax: 200,
 } as const;
+
+// One emoji: pictographs plus the joiners, variation selectors, skin tones and keycaps that
+// build composite ones (👍🏽, ❤️, 👨‍👩‍👧, 1️⃣), or a flag (two regional indicators).
+const EMOJI_PATTERN =
+  /^(?:(?:\p{Extended_Pictographic}|[#*0-9]\uFE0F?\u20E3)(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}\uFE0F?)*|\p{Regional_Indicator}{2})$/u;
+
+/** Whether `text` is a single emoji, as reactions require. */
+export function isReactionEmoji(text: string): boolean {
+  return text.length <= 32 && EMOJI_PATTERN.test(text);
+}
 
 /** LiveKit room name for a voice channel. */
 export const voiceRoomName = (channelId: number): string => `voice:${channelId}`;

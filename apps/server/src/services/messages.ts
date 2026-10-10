@@ -1,17 +1,25 @@
 import {
+  isReactionEmoji,
+  LIMITS,
   mentionsEveryone,
   parseMentions,
   type Channel,
   type Message,
+  type Reaction,
   type User,
 } from '@letopeiras/shared';
 import { expectRow, type Db } from '../db';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import {
+  addReaction,
+  countReactionEmojis,
   createMessage,
   deleteMessage,
   findMessage,
+  hasReactionEmoji,
   listMessages,
+  listReactions,
+  removeReaction,
   updateMessageContent,
 } from '../repo/messages';
 import { markRead } from '../repo/read-state';
@@ -35,9 +43,25 @@ export function requireTextChannel(db: Db, user: User, channelId: number): Chann
   return channel;
 }
 
-export function sendMessage(db: Db, author: User, channelId: number, content: string): Message {
+export function sendMessage(
+  db: Db,
+  author: User,
+  channelId: number,
+  content: string,
+  reply: { replyToId?: number | undefined; replyPing?: boolean | undefined } = {},
+): Message {
   const channel = requireTextChannel(db, author, channelId);
   const mentionIds = resolveMentions(db, author, channel, content);
+  if (reply.replyToId !== undefined) {
+    const original = findMessage(db, reply.replyToId);
+    if (!original || original.channelId !== channelId) {
+      throw notFound('A mensagem que você está respondendo não existe mais');
+    }
+    // Replying pings the original author unless turned off (they can see the channel).
+    if (reply.replyPing !== false && original.authorId !== author.id) {
+      mentionIds.push(original.authorId);
+    }
+  }
   return db.transaction(() => {
     const message = createMessage(db, {
       channelId,
@@ -45,6 +69,7 @@ export function sendMessage(db: Db, author: User, channelId: number, content: st
       content,
       mentionIds,
       mentionsEveryone: mentionsEveryone(content),
+      replyToId: reply.replyToId,
     });
     // Your own message never counts as unread.
     markRead(db, author.id, channelId, message.id);
@@ -82,6 +107,32 @@ export function removeMessage(db: Db, user: User, messageId: number): Message {
   }
   deleteMessage(db, messageId);
   return message;
+}
+
+/**
+ * Adds or removes the user's `emoji` on a message they can see. Returns the message and
+ * its reactions now, or null when nothing changed (already there / not there).
+ */
+export function react(
+  db: Db,
+  user: User,
+  messageId: number,
+  emoji: string,
+  add: boolean,
+): { message: Message; reactions: Reaction[] } | null {
+  if (!isReactionEmoji(emoji)) throw badRequest('Reação precisa ser um emoji', 'invalid_emoji');
+  const message = requireMessage(db, user, messageId);
+  const changed = db.transaction(() => {
+    if (!add) return removeReaction(db, messageId, user.id, emoji);
+    if (
+      !hasReactionEmoji(db, messageId, emoji) &&
+      countReactionEmojis(db, messageId) >= LIMITS.reactionsPerMessage
+    ) {
+      throw badRequest('Essa mensagem já tem reações demais', 'too_many_reactions');
+    }
+    return addReaction(db, messageId, user.id, emoji);
+  })();
+  return changed ? { message, reactions: listReactions(db, messageId) } : null;
 }
 
 export function messageHistory(

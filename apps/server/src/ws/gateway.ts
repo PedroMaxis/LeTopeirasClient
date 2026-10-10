@@ -24,6 +24,7 @@ import { authenticate } from '../services/auth';
 import {
   editMessage,
   markChannelRead,
+  react,
   removeMessage,
   requireTextChannel,
   sendMessage,
@@ -64,6 +65,8 @@ export class Gateway {
   private readonly messageLimiter = new RateLimiter(10, 10_000);
   // Every other event (read markers, presence, voice state…) per user.
   private readonly eventLimiter = new RateLimiter(60, 10_000);
+  // Reactions per user: clicking around is fine, scripting floods isn't.
+  private readonly reactionLimiter = new RateLimiter(20, 10_000);
   // At most one typing broadcast per user and channel every 3 s.
   private readonly typingLimiter = new RateLimiter(1, 3_000);
   private readonly heartbeat: NodeJS.Timeout;
@@ -315,7 +318,12 @@ export class Gateway {
       event.type === 'message.send' ||
       event.type === 'message.edit' ||
       event.type === 'message.delete';
-    const limiter = isMessageEvent ? this.messageLimiter : this.eventLimiter;
+    const isReaction = event.type === 'reaction.add' || event.type === 'reaction.remove';
+    const limiter = isMessageEvent
+      ? this.messageLimiter
+      : isReaction
+        ? this.reactionLimiter
+        : this.eventLimiter;
     if (!limiter.consume(String(user.id))) throw tooManyRequests();
 
     switch (event.type) {
@@ -323,8 +331,8 @@ export class Gateway {
         throw new AppError(400, 'already_authenticated', 'Já autenticado');
 
       case 'message.send': {
-        const { channelId, content, nonce } = event.data;
-        const message = sendMessage(db, user, channelId, content);
+        const { channelId, content, nonce, replyToId, replyPing } = event.data;
+        const message = sendMessage(db, user, channelId, content, { replyToId, replyPing });
         this.broadcastToChannel(requireTextChannel(db, user, channelId), {
           type: 'message.created',
           data: nonce === undefined ? { message } : { message, nonce },
@@ -346,6 +354,19 @@ export class Gateway {
         this.broadcastToChannel(requireTextChannel(db, user, message.channelId), {
           type: 'message.deleted',
           data: { channelId: message.channelId, messageId: message.id },
+        });
+        return;
+      }
+
+      case 'reaction.add':
+      case 'reaction.remove': {
+        const { messageId, emoji } = event.data;
+        const result = react(db, user, messageId, emoji, event.type === 'reaction.add');
+        if (!result) return;
+        const { message, reactions } = result;
+        this.broadcastToChannel(requireTextChannel(db, user, message.channelId), {
+          type: 'message.reactions',
+          data: { channelId: message.channelId, messageId, reactions },
         });
         return;
       }

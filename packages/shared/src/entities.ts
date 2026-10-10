@@ -52,6 +52,13 @@ export const channelSchema = z.object({
 });
 export type Channel = z.infer<typeof channelSchema>;
 
+/** One emoji on a message and who reacted with it, in the order they did. */
+export const reactionSchema = z.object({
+  emoji: z.string(),
+  userIds: z.array(idSchema),
+});
+export type Reaction = z.infer<typeof reactionSchema>;
+
 export const messageSchema = z.object({
   id: idSchema,
   channelId: idSchema,
@@ -64,6 +71,12 @@ export const messageSchema = z.object({
   mentionIds: z.array(idSchema),
   /** The message uses @todos (everyone who can see the channel). */
   mentionsEveryone: z.boolean(),
+  /** The message this one answers. Defaults keep older servers' messages parseable. */
+  replyToId: idSchema.nullable().default(null),
+  /** A snippet of that message; null when it was deleted (or there's none). */
+  replyTo: z.object({ authorId: idSchema, content: z.string() }).nullable().default(null),
+  /** By the time each emoji was first used. */
+  reactions: z.array(reactionSchema).default([]),
 });
 export type Message = z.infer<typeof messageSchema>;
 

@@ -7,6 +7,7 @@ import {
   idSchema,
   messageSchema,
   presenceStatusSchema,
+  reactionSchema,
   readStateSchema,
   roleSchema,
   userSchema,
@@ -28,7 +29,19 @@ export const clientEventSchema = z.discriminatedUnion('type', [
       content: messageContentSchema,
       /** Echoed back in message.created so the sender can match its optimistic copy. */
       nonce: z.string().max(64).optional(),
+      /** Answering a message of the same channel. */
+      replyToId: idSchema.optional(),
+      /** Whether the reply mentions the original author (default true, like Discord). */
+      replyPing: z.boolean().optional(),
     }),
+  }),
+  z.object({
+    type: z.literal('reaction.add'),
+    data: z.object({ messageId: idSchema, emoji: z.string().max(32) }),
+  }),
+  z.object({
+    type: z.literal('reaction.remove'),
+    data: z.object({ messageId: idSchema, emoji: z.string().max(32) }),
   }),
   z.object({
     type: z.literal('message.edit'),
@@ -83,6 +96,15 @@ export const serverEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('message.deleted'),
     data: z.object({ channelId: idSchema, messageId: idSchema }),
+  }),
+  /** A message's reactions changed (the whole list, in order). */
+  z.object({
+    type: z.literal('message.reactions'),
+    data: z.object({
+      channelId: idSchema,
+      messageId: idSchema,
+      reactions: z.array(reactionSchema),
+    }),
   }),
   z.object({
     type: z.literal('presence.updated'),

@@ -1,4 +1,4 @@
-import type { Message } from '@letopeiras/shared';
+import { LIMITS, type Message, type Reaction } from '@letopeiras/shared';
 import { expectRow, type Db } from '../db';
 
 interface MessageRow {
@@ -10,9 +10,12 @@ interface MessageRow {
   edited_at: number | null;
   mention_ids: string | null;
   mentions_everyone: 0 | 1;
+  reply_to_id: number | null;
+  reply_author_id: number | null;
+  reply_content: string | null;
 }
 
-const toMessage = (row: MessageRow): Message => ({
+const toMessage = (row: MessageRow, reactions: Reaction[] = []): Message => ({
   id: row.id,
   channelId: row.channel_id,
   authorId: row.author_id,
@@ -21,12 +24,86 @@ const toMessage = (row: MessageRow): Message => ({
   editedAt: row.edited_at,
   mentionIds: row.mention_ids ? row.mention_ids.split(',').map(Number) : [],
   mentionsEveryone: row.mentions_everyone === 1,
+  replyToId: row.reply_to_id,
+  replyTo:
+    row.reply_author_id !== null && row.reply_content !== null
+      ? { authorId: row.reply_author_id, content: row.reply_content }
+      : null,
+  reactions,
 });
 
+// The replied-to message comes along as a snippet (null once it's deleted).
 const SELECT_MESSAGE = `
   SELECT m.*,
-         (SELECT group_concat(user_id) FROM message_mentions mm WHERE mm.message_id = m.id) AS mention_ids
-  FROM messages m`;
+         (SELECT group_concat(user_id) FROM message_mentions mm WHERE mm.message_id = m.id) AS mention_ids,
+         r.author_id AS reply_author_id,
+         substr(r.content, 1, ${LIMITS.replySnippetMax}) AS reply_content
+  FROM messages m
+  LEFT JOIN messages r ON r.id = m.reply_to_id`;
+
+/** Reactions of these messages: emojis by first use, users in the order they reacted. */
+function reactionsOf(db: Db, messageIds: number[]): Map<number, Reaction[]> {
+  const byMessage = new Map<number, Reaction[]>();
+  if (messageIds.length === 0) return byMessage;
+  const rows = db
+    .prepare<number[], { message_id: number; emoji: string; user_id: number }>(
+      `SELECT message_id, emoji, user_id FROM message_reactions
+       WHERE message_id IN (${messageIds.map(() => '?').join(',')})
+       ORDER BY created_at, rowid`,
+    )
+    .all(...messageIds);
+  for (const row of rows) {
+    const list = byMessage.get(row.message_id) ?? [];
+    const reaction = list.find((r) => r.emoji === row.emoji);
+    if (reaction) reaction.userIds.push(row.user_id);
+    else list.push({ emoji: row.emoji, userIds: [row.user_id] });
+    byMessage.set(row.message_id, list);
+  }
+  return byMessage;
+}
+
+export function listReactions(db: Db, messageId: number): Reaction[] {
+  return reactionsOf(db, [messageId]).get(messageId) ?? [];
+}
+
+/** Adds a reaction; false if this user already reacted with this emoji. */
+export function addReaction(db: Db, messageId: number, userId: number, emoji: string): boolean {
+  return (
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO message_reactions (message_id, user_id, emoji, created_at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run(messageId, userId, emoji, Date.now()).changes === 1
+  );
+}
+
+export function removeReaction(db: Db, messageId: number, userId: number, emoji: string): boolean {
+  return (
+    db
+      .prepare('DELETE FROM message_reactions WHERE message_id = ? AND user_id = ? AND emoji = ?')
+      .run(messageId, userId, emoji).changes === 1
+  );
+}
+
+/** Whether `emoji` is already on the message (anyone's). */
+export function hasReactionEmoji(db: Db, messageId: number, emoji: string): boolean {
+  return (
+    db
+      .prepare('SELECT 1 FROM message_reactions WHERE message_id = ? AND emoji = ? LIMIT 1')
+      .get(messageId, emoji) !== undefined
+  );
+}
+
+export function countReactionEmojis(db: Db, messageId: number): number {
+  return expectRow(
+    db
+      .prepare<[number], { n: number }>(
+        'SELECT COUNT(DISTINCT emoji) AS n FROM message_reactions WHERE message_id = ?',
+      )
+      .get(messageId),
+  ).n;
+}
 
 /** Replaces who a message mentions. */
 function setMentions(db: Db, messageId: number, userIds: number[]): void {
@@ -43,20 +120,22 @@ export function createMessage(
     content: string;
     mentionIds?: number[];
     mentionsEveryone?: boolean;
+    replyToId?: number | undefined;
   },
 ): Message {
   return db.transaction(() => {
     const { id } = expectRow(
       db
-        .prepare<[number, number, string, number, number], { id: number }>(
-          `INSERT INTO messages (channel_id, author_id, content, mentions_everyone, created_at)
-           VALUES (?, ?, ?, ?, ?) RETURNING id`,
+        .prepare<[number, number, string, number, number | null, number], { id: number }>(
+          `INSERT INTO messages (channel_id, author_id, content, mentions_everyone, reply_to_id, created_at)
+           VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
         )
         .get(
           input.channelId,
           input.authorId,
           input.content,
           input.mentionsEveryone ? 1 : 0,
+          input.replyToId ?? null,
           Date.now(),
         ),
     );
@@ -67,7 +146,7 @@ export function createMessage(
 
 export function findMessage(db: Db, id: number): Message | undefined {
   const row = db.prepare<[number], MessageRow>(`${SELECT_MESSAGE} WHERE m.id = ?`).get(id);
-  return row && toMessage(row);
+  return row && toMessage(row, listReactions(db, id));
 }
 
 export function updateMessageContent(
@@ -106,7 +185,12 @@ export function listMessages(
     )
     .all(channelId, options.before ?? Number.MAX_SAFE_INTEGER, options.limit + 1);
   const hasMore = rows.length > options.limit;
-  return { messages: rows.slice(0, options.limit).reverse().map(toMessage), hasMore };
+  const page = rows.slice(0, options.limit).reverse();
+  const reactions = reactionsOf(
+    db,
+    page.map((r) => r.id),
+  );
+  return { messages: page.map((r) => toMessage(r, reactions.get(r.id))), hasMore };
 }
 
 /** Unread messages mentioning `userId` (by name or @todos, written by someone else), per channel. */

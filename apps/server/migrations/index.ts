@@ -133,4 +133,20 @@ export const migrations: Migration[] = [
         CHECK (mentions_everyone IN (0, 1));
     `,
   },
+  {
+    version: 5,
+    name: 'reactions-replies',
+    sql: `
+      CREATE TABLE message_reactions (
+        message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        emoji      TEXT    NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (message_id, emoji, user_id)
+      );
+
+      -- No foreign key: a reply keeps pointing at a deleted message ("Mensagem apagada").
+      ALTER TABLE messages ADD COLUMN reply_to_id INTEGER;
+    `,
+  },
 ];
