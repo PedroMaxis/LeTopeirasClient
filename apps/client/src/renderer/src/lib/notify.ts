@@ -21,6 +21,8 @@ export function notifyMessage(
   const { notifications, notifyAll } = settings.get();
   if (!notifications) return;
   const focused = document.hasFocus();
+  // A mention also flashes the taskbar button until the window gets focus.
+  if (context.mentionsMe && !focused) void window.api.flashWindow();
   const notify = context.mentionsMe ? !(focused && context.viewing) : notifyAll && !focused;
   if (!notify) return;
   const body =

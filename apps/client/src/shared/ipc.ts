@@ -9,6 +9,8 @@ export const IpcChannel = {
   WindowClose: 'window:close',
   WindowShow: 'window:show',
   GetIdleSeconds: 'system:idle-seconds',
+  WindowSetBadge: 'window:set-badge',
+  WindowFlash: 'window:flash',
   GetLaunchAtLogin: 'app:get-launch-at-login',
   SetLaunchAtLogin: 'app:set-launch-at-login',
   SessionLoad: 'session:load',
@@ -112,6 +114,13 @@ export interface LeTopeirasApi {
   closeWindow(): Promise<void>;
   /** Brings the window back from the tray (e.g. clicking a notification). */
   showWindow(): Promise<void>;
+  /**
+   * Taskbar overlay: a PNG data URL (the unread mention count drawn by the renderer) and
+   * its description for screen readers; null removes it.
+   */
+  setTaskbarBadge(pngDataUrl: string | null, description: string): Promise<void>;
+  /** Flashes the taskbar button until the window gets focus (no-op while focused). */
+  flashWindow(): Promise<void>;
   /** Seconds since the last keyboard/mouse input anywhere on the PC. */
   getIdleSeconds(): Promise<number>;
   /** "Iniciar com o Windows" (starts hidden in the tray). */

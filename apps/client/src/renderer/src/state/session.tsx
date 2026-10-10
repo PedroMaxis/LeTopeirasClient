@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { Api } from '../lib/api';
+import { syncTaskbarBadge } from '../lib/taskbar';
 import { ChatClient } from './chat';
 import { VoiceClient } from './voice';
 
@@ -13,6 +14,7 @@ export class Session {
   readonly voice: VoiceClient;
   private disposed = false;
   private readonly idleTimer: ReturnType<typeof setInterval>;
+  private readonly stopTaskbarBadge: () => void;
   private idle = false;
 
   constructor(
@@ -39,6 +41,9 @@ export class Session {
       lastStatus = status;
     });
 
+    // Unread mentions on the taskbar button.
+    this.stopTaskbarBadge = syncTaskbarBadge(this.chat.store);
+
     // "Ausente" after 10 minutes without keyboard or mouse input anywhere on the PC.
     this.idleTimer = setInterval(() => void this.checkIdle(), IDLE_POLL_MS);
   }
@@ -59,6 +64,7 @@ export class Session {
     if (this.disposed) return;
     this.disposed = true;
     clearInterval(this.idleTimer);
+    this.stopTaskbarBadge();
     this.voice.dispose();
     this.chat.close();
     void window.api.clearSession();

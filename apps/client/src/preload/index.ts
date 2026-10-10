@@ -15,6 +15,9 @@ const api: LeTopeirasApi = {
   closeWindow: () => ipcRenderer.invoke(IpcChannel.WindowClose),
   showWindow: () => ipcRenderer.invoke(IpcChannel.WindowShow),
   getIdleSeconds: () => ipcRenderer.invoke(IpcChannel.GetIdleSeconds),
+  setTaskbarBadge: (pngDataUrl, description) =>
+    ipcRenderer.invoke(IpcChannel.WindowSetBadge, pngDataUrl, description),
+  flashWindow: () => ipcRenderer.invoke(IpcChannel.WindowFlash),
   getLaunchAtLogin: () => ipcRenderer.invoke(IpcChannel.GetLaunchAtLogin),
   setLaunchAtLogin: (enabled) => ipcRenderer.invoke(IpcChannel.SetLaunchAtLogin, enabled),
   loadSession: () => ipcRenderer.invoke(IpcChannel.SessionLoad),

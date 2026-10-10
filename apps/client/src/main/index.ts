@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { app, BrowserWindow, ipcMain, powerMonitor, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session, shell } from 'electron';
 import { APP_ID } from '@letopeiras/shared';
 import windowIconPath from '../../resources/tray.ico?asset';
 import { IpcChannel, type AppInfo } from '../shared/ipc';
@@ -21,6 +21,8 @@ startCrashReporter();
 
 /** Passed when Windows starts the app at login: stay in the tray instead of popping up. */
 const HIDDEN_ARG = '--hidden';
+/** The taskbar badge the renderer draws: a small PNG, nothing else. */
+const BADGE_URL = /^data:image\/png;base64,[A-Za-z0-9+/=]{1,40000}$/;
 const startHidden = process.argv.includes(HIDDEN_ARG);
 
 /** Set when the user picks "Sair" in the tray; otherwise closing only hides the window. */
@@ -55,6 +57,20 @@ function registerIpc(getWindow: () => BrowserWindow | null): void {
     assertTrustedSender(event);
     const win = getWindow();
     if (win) showWindow(win);
+  });
+
+  ipcMain.handle(IpcChannel.WindowSetBadge, (event, rawUrl: unknown, rawDescription: unknown) => {
+    assertTrustedSender(event);
+    const win = getWindow();
+    if (!win) return;
+    const url = typeof rawUrl === 'string' && BADGE_URL.test(rawUrl) ? rawUrl : null;
+    const description = typeof rawDescription === 'string' ? rawDescription.slice(0, 100) : '';
+    win.setOverlayIcon(url ? nativeImage.createFromDataURL(url) : null, description);
+  });
+  ipcMain.handle(IpcChannel.WindowFlash, (event) => {
+    assertTrustedSender(event);
+    const win = getWindow();
+    if (win && !win.isFocused()) win.flashFrame(true);
   });
 
   ipcMain.handle(IpcChannel.GetIdleSeconds, (event) => {
@@ -97,6 +113,8 @@ function createMainWindow(): BrowserWindow {
   win.once('ready-to-show', () => {
     if (!startHidden) win.show();
   });
+  // A mention flashed the taskbar button; looking at the window is enough.
+  win.on('focus', () => win.flashFrame(false));
   win.on('close', (event) => {
     if (quitting) return;
     event.preventDefault();
