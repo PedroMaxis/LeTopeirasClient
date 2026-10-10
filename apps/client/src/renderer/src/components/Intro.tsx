@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
 import { playSound, type SoundName } from '../lib/sounds';
+import { MoleArt } from './ui/Mole';
 
 gsap.registerPlugin(MotionPathPlugin);
 
@@ -38,30 +39,6 @@ const PEBBLES = [
 const STAR_COUNT = 26;
 
 const random = (min: number, max: number) => min + Math.random() * (max - min);
-
-/** The logo's miner mole (same shapes and colors as ui/Logo.tsx), split into moving parts. */
-function IntroMole() {
-  return (
-    <svg className="intro-mole-svg" viewBox="0 0 64 64" overflow="visible">
-      <ellipse className="m-paw-l" cx="18" cy="56" rx="7" ry="4.5" fill="#e9b58c" />
-      <ellipse className="m-paw-r" cx="46" cy="56" rx="7" ry="4.5" fill="#e9b58c" />
-      <g className="m-body">
-        <circle cx="32" cy="37" r="20" fill="#6e4a33" />
-        <ellipse cx="32" cy="46" rx="11.5" ry="8.5" fill="#b0805d" />
-        <g className="m-eyes">
-          <circle className="m-eye-l" cx="24.5" cy="35" r="2.2" fill="#1c120b" />
-          <circle className="m-eye-r" cx="39.5" cy="35" r="2.2" fill="#1c120b" />
-        </g>
-        <ellipse cx="32" cy="41" rx="5" ry="3.6" fill="#f08f8f" />
-        <rect x="29.2" y="45" width="2.6" height="4.6" rx="0.8" fill="#fff5ea" />
-        <rect x="32.2" y="45" width="2.6" height="4.6" rx="0.8" fill="#fff5ea" />
-        <path d="M14 28a18 16.5 0 0 1 36 0z" fill="#f0782a" />
-        <rect x="10" y="26" width="44" height="5" rx="2.5" fill="#c95c18" />
-        <circle cx="32" cy="19" r="5" fill="#ffe08a" stroke="#1c120b" strokeWidth="2" />
-      </g>
-    </svg>
-  );
-}
 
 /**
  * Startup animation. A light travels underground as the mole tunnels in, the ground bulges
@@ -130,7 +107,7 @@ export function Intro({ onDone }: { onDone(): void }) {
           <span className="intro-mound" />
           <div className="intro-above">
             <div className="intro-mole">
-              <IntroMole />
+              <MoleArt className="intro-mole-svg" />
               <span className="intro-lamp" />
             </div>
             <div className="intro-title">

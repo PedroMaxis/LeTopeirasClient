@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Category, Channel, VoiceParticipant } from '@letopeiras/shared';
 import { canAccess, nameColor } from '../../lib/roles';
 import { useStore } from '../../lib/store';
@@ -7,7 +7,7 @@ import { useSession } from '../../state/session';
 import type { LayoutActions, View } from '../MainLayout';
 import { Avatar } from '../ui/Avatar';
 import { Icon } from '../ui/Icon';
-import { Logo } from '../ui/Logo';
+import { Mole, type MoleHandle } from '../ui/Mole';
 import { UserPanel } from './UserPanel';
 import { VoicePanel } from './VoicePanel';
 import { useVolumeMenu } from '../voice/VolumeMenu';
@@ -37,6 +37,7 @@ export function ChannelSidebar({ view, actions }: Props) {
   const categories = useStore(chat.store, (s) => s.categories);
   const me = useStore(chat.store, (s) => s.me);
   const [collapsed, setCollapsed] = useState(loadCollapsed);
+  const mole = useRef<MoleHandle>(null);
 
   const toggle = (categoryId: number) => {
     setCollapsed((current) => {
@@ -55,7 +56,16 @@ export function ChannelSidebar({ view, actions }: Props) {
     <nav className="sidebar">
       <button type="button" className="sidebar-header" onClick={() => actions.openSettings()}>
         <span className="sidebar-brand">
-          <Logo size={30} />
+          {/* Easter egg: the mole jumps instead of opening the settings. */}
+          <span
+            className="sidebar-mole"
+            onClick={(e) => {
+              e.stopPropagation();
+              mole.current?.jump();
+            }}
+          >
+            <Mole size={30} ref={mole} />
+          </span>
           <span>LeTopeiras</span>
         </span>
         <Icon name="chevronDown" size={18} />

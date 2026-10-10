@@ -117,6 +117,71 @@ a:hover {
   background-size: 20px 20px;
 }
 
+/* ---------------------------------------------------------------- mole */
+
+/* The animated mascot (components/ui/Mole.tsx). */
+.mole {
+  position: relative;
+  flex: none;
+}
+
+.mole-hole {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -2%;
+  height: 16%;
+  border-radius: 50%;
+  background: #0c0806;
+  box-shadow: 0 -2px 0 #4a3424;
+  transform: scaleX(0);
+}
+
+/* Clips only the bottom edge, so the mole can sink into the hole but still jump out. */
+.mole-clip {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(-200% -200% 5% -200%);
+}
+
+.mole-body {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 90%;
+}
+
+.mole-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Soft glow on the helmet lamp (32, 19 in the 64 × 64 viewBox). */
+.mole-lamp {
+  position: absolute;
+  left: 50%;
+  top: 29.7%;
+  width: 55%;
+  height: 55%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(rgba(255, 224, 138, 0.55) 0%, transparent 65%);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.mole-dirt {
+  position: absolute;
+  border-radius: 40%;
+  pointer-events: none;
+}
+
+.sidebar-mole {
+  display: flex;
+  cursor: pointer;
+}
+
 /* ---------------------------------------------------------------- intro */
 
 /* Startup animation (components/Intro.tsx), over everything but the title bar. */

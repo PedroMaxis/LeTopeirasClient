@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type RefObject,
+} from 'react';
+import { gsap } from 'gsap';
+import { Flip } from 'gsap/Flip';
 import { Track, type Participant, type VideoTrack } from 'livekit-client';
 import type { Channel, User } from '@letopeiras/shared';
 import { errorMessage } from '../../lib/api';
@@ -25,6 +34,8 @@ interface Share {
   user: User | undefined;
   watching: boolean;
 }
+
+gsap.registerPlugin(Flip);
 
 const TILE_GAP = 12;
 const TILE_ASPECT = 16 / 9;
@@ -53,6 +64,50 @@ function useTileSize(el: HTMLElement | null, count: number) {
   }
   const width = Math.max(0, Math.floor(best));
   return { width, height: Math.floor(width / TILE_ASPECT) };
+}
+
+/**
+ * Animates the stage's tiles (`data-flip-id`) to their new place and size when `layoutKey`
+ * changes: a share starts or stops, someone joins, grid ↔ focus. The positions are recorded
+ * after every render, so the next change animates from what was on screen. Tiles that move
+ * between the grid, the focus area and the strip are new elements, matched by their id.
+ */
+function useLayoutFlip(
+  container: RefObject<HTMLElement | null>,
+  hidden: boolean,
+  layoutKey: string,
+): void {
+  const state = useRef<Flip.FlipState | null>(null);
+  const lastKey = useRef(layoutKey);
+  useLayoutEffect(() => {
+    const el = container.current;
+    // Hidden, everything measures 0: start over when the stage shows again.
+    if (!el || hidden) {
+      state.current = null;
+      return;
+    }
+    const targets = el.querySelectorAll<HTMLElement>('[data-flip-id]');
+    const animate =
+      state.current !== null &&
+      lastKey.current !== layoutKey &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (animate && state.current) {
+      Flip.from(state.current, {
+        targets,
+        duration: 0.4,
+        ease: 'power2.inOut',
+        absolute: true,
+        onEnter: (entering) =>
+          gsap.fromTo(
+            entering,
+            { opacity: 0, scale: 0.85 },
+            { opacity: 1, scale: 1, duration: 0.3 },
+          ),
+      });
+    }
+    lastKey.current = layoutKey;
+    state.current = Flip.getState(targets);
+  });
 }
 
 /**
@@ -123,6 +178,16 @@ export function VoiceStage({
   const focused = shares.find((s) => s.participant.identity === focusedId);
   const gridCount = focused ? 0 : shares.length || participants.length;
   const tile = useTileSize(grid, gridCount);
+  const body = useRef<HTMLDivElement>(null);
+  useLayoutFlip(
+    body,
+    hidden,
+    [
+      focusedId ?? '',
+      shares.map((s) => `${s.participant.identity}${s.watching ? '+' : ''}`).join(','),
+      participants.map((p) => p.identity).join(','),
+    ].join('|'),
+  );
 
   const participantTile = (p: Participant, strip: boolean) => {
     const state = voiceState?.find((v) => String(v.userId) === p.identity);
@@ -180,7 +245,7 @@ export function VoiceStage({
       </header>
 
       <div className="stage-row">
-        <div className="stage-body">
+        <div className="stage-body" ref={body}>
           {focused ? (
             <div className="stage-focus">
               <ShareTile share={focused} large />
@@ -303,6 +368,7 @@ function ParticipantTile(props: {
     <button
       type="button"
       className={`stage-tile ${props.speaking ? 'speaking' : ''} ${props.onClick ? 'live' : ''}`}
+      data-flip-id={`p-${props.participant.identity}`}
       style={props.style}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}
@@ -413,6 +479,7 @@ function ShareTile({
   return (
     <div
       className={`share-tile ${variant} ${watching ? '' : 'not-watching'}`}
+      data-flip-id={`s-${identity}`}
       ref={container}
       style={style}
       onClick={onSelect}

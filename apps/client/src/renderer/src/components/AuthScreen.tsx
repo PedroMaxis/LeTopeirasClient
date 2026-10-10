@@ -1,8 +1,9 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { gsap } from 'gsap';
 import { LIMITS, type AuthResponse } from '@letopeiras/shared';
 import { errorMessage, login, register } from '../lib/api';
 import { FieldLabel } from './ui/controls';
-import { Logo } from './ui/Logo';
+import { Mole, type MoleHandle } from './ui/Mole';
 
 interface Props {
   notice: string | null;
@@ -31,16 +32,21 @@ function AuthCard({
   subtitle,
   children,
   onSubmit,
+  cardRef,
+  moleRef,
 }: {
   title: string;
   subtitle: string;
   children: ReactNode;
   onSubmit(e: FormEvent): void;
+  /** So a submit can react: shake and frown on errors, dive in on success. */
+  cardRef: RefObject<HTMLFormElement | null>;
+  moleRef: RefObject<MoleHandle | null>;
 }) {
   return (
-    <form className="auth-card" onSubmit={onSubmit}>
+    <form className="auth-card" onSubmit={onSubmit} ref={cardRef}>
       <div className="auth-header">
-        <Logo size={96} />
+        <Mole size={96} ref={moleRef} />
         <div className="auth-wordmark">LeTopeiras</div>
         <h1>{title}</h1>
         <p>{subtitle}</p>
@@ -85,7 +91,11 @@ function Field(props: {
   );
 }
 
-function useSubmit(action: () => Promise<void>) {
+function useSubmit(
+  action: () => Promise<void>,
+  cardRef: RefObject<HTMLFormElement | null>,
+  moleRef: RefObject<MoleHandle | null>,
+) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const submit = async (e: FormEvent) => {
@@ -97,6 +107,14 @@ function useSubmit(action: () => Promise<void>) {
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
+      moleRef.current?.frown();
+      if (cardRef.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        gsap.to(cardRef.current, {
+          keyframes: { x: [0, -10, 9, -6, 4, 0] },
+          duration: 0.4,
+          ease: 'none',
+        });
+      }
     }
   };
   return { busy, error, submit };
@@ -114,15 +132,25 @@ function LoginForm({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
-  const { busy, error, submit } = useSubmit(async () => {
-    onAuthenticated(await login({ username, password }), remember);
-  });
+  const card = useRef<HTMLFormElement>(null);
+  const mole = useRef<MoleHandle>(null);
+  const { busy, error, submit } = useSubmit(
+    async () => {
+      const auth = await login({ username, password });
+      await mole.current?.dive();
+      onAuthenticated(auth, remember);
+    },
+    card,
+    mole,
+  );
 
   return (
     <AuthCard
       title="Bem-vindo de volta esquisto!"
       subtitle="Entra aí caraio"
       onSubmit={(e) => void submit(e)}
+      cardRef={card}
+      moleRef={mole}
     >
       {notice && <div className="form-notice">{notice}</div>}
       <Field
@@ -172,15 +200,25 @@ function RegisterForm({
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
-  const { busy, error, submit } = useSubmit(async () => {
-    onAuthenticated(await register({ inviteCode, username, displayName, password }), true);
-  });
+  const card = useRef<HTMLFormElement>(null);
+  const mole = useRef<MoleHandle>(null);
+  const { busy, error, submit } = useSubmit(
+    async () => {
+      const auth = await register({ inviteCode, username, displayName, password });
+      await mole.current?.dive();
+      onAuthenticated(auth, true);
+    },
+    card,
+    mole,
+  );
 
   return (
     <AuthCard
       title="Cavar sua toca"
       subtitle="Você precisa de um convite de alguém do grupo."
       onSubmit={(e) => void submit(e)}
+      cardRef={card}
+      moleRef={mole}
     >
       <Field
         id="invite"

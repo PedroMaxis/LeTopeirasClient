@@ -13,7 +13,7 @@ import { useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { Icon } from '../ui/Icon';
-import { Logo } from '../ui/Logo';
+import { Mole } from '../ui/Mole';
 import { MessageItem, PendingItem } from './MessageItem';
 
 /** Consecutive messages from the same author within this window share one header. */
@@ -122,7 +122,7 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
         <div className="messages-inner">
           {entry && !entry.hasMore && (
             <div className="channel-start">
-              <Logo size={56} />
+              <Mole size={64} mode="peek" />
               <h2>Bem-vindo a #{channel.name}!</h2>
               <p>Esse é o começo do canal.</p>
             </div>

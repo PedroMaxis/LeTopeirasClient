@@ -9,7 +9,7 @@ import { ChatView } from './chat/ChatView';
 import { MemberList } from './MemberList';
 import { ScreenPicker } from './ScreenPicker';
 import { SettingsModal, type SettingsPage } from './settings/SettingsModal';
-import { Logo } from './ui/Logo';
+import { Mole } from './ui/Mole';
 import { VoiceStage } from './voice/VoiceStage';
 
 export type View = { kind: 'text' | 'voice'; channelId: number };
@@ -122,7 +122,7 @@ export function MainLayout() {
   if (!me) {
     return (
       <div className="splash">
-        <Logo size={96} />
+        <Mole size={96} mode="dig" />
         <p>
           {status === 'reconnecting'
             ? 'Servidor fora do ar, tentando de novo…'
@@ -166,7 +166,7 @@ export function MainLayout() {
         )}
         {!channel && (
           <div className="empty-state">
-            <Logo size={72} />
+            <Mole size={72} />
             <p>Nenhum canal ainda. O admin pode criar um nas configurações.</p>
           </div>
         )}
