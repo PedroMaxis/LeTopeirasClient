@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
 import type { Category, Channel, VoiceParticipant } from '@letopeiras/shared';
+import { byTypeThenPosition } from '../../lib/channels';
 import { canAccess, nameColor } from '../../lib/roles';
 import { useStore } from '../../lib/store';
-import { showToast } from '../../lib/toast';
 import { useSession } from '../../state/session';
 import type { LayoutActions, View } from '../MainLayout';
 import { Avatar } from '../ui/Avatar';
@@ -26,10 +26,6 @@ function loadCollapsed(): Set<number> {
     return new Set();
   }
 }
-
-/** Text channels first, then voice, each by position (like Discord). */
-const byTypeThenPosition = (a: Channel, b: Channel) =>
-  (a.type === b.type ? 0 : a.type === 'text' ? -1 : 1) || a.position - b.position || a.id - b.id;
 
 export function ChannelSidebar({ view, actions }: Props) {
   const { chat } = useSession();
@@ -180,14 +176,7 @@ function ChannelItem({
     channel.lastMessageId !== null &&
     channel.lastMessageId > (readStates[channel.id] ?? 0);
 
-  const open = () => {
-    if (locked) {
-      showToast('Esse canal é privado. Peça a tag para o admin.', 'info');
-      return;
-    }
-    if (kind === 'voice' && inVoice !== channel.id) void voice.join(channel.id);
-    actions.openView({ kind, channelId: channel.id });
-  };
+  const open = () => actions.openChannel(channel);
 
   return (
     <div>

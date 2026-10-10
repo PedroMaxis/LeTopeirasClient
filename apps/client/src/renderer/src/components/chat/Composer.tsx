@@ -51,7 +51,7 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
     // Esc goes back to the newest messages (the emoji picker closes itself instead).
     if (e.key === 'Escape' && !emojiOpen) onEscape();
     // ↑ in an empty box edits your last message, like in Discord.
-    if (e.key === 'ArrowUp' && !value) {
+    if (e.key === 'ArrowUp' && !value && !e.altKey && !e.ctrlKey && !e.shiftKey) {
       const { me, messages } = chat.store.get();
       const last = messages[channel.id]?.messages.findLast((m) => m.authorId === me?.id);
       if (last) {

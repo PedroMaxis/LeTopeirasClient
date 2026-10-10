@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { Channel } from '@letopeiras/shared';
+import { isUnread, sidebarOrder } from '../lib/channels';
 import { OPEN_CHANNEL_EVENT } from '../lib/notify';
 import { canAccess } from '../lib/roles';
 import { settings, updateSettings } from '../lib/settings';
 import { useStore } from '../lib/store';
+import { showToast } from '../lib/toast';
 import { useSession } from '../state/session';
 import { ChannelSidebar } from './sidebar/ChannelSidebar';
 import { ChatView } from './chat/ChatView';
 import { MemberList } from './MemberList';
+import { QuickSwitcher } from './QuickSwitcher';
 import { ScreenPicker } from './ScreenPicker';
 import { SettingsModal, type SettingsPage } from './settings/SettingsModal';
 import { Mole } from './ui/Mole';
@@ -28,6 +32,8 @@ function loadLastText(userId: number): number | null {
 
 export interface LayoutActions {
   openView(view: View): void;
+  /** Opens a channel like clicking it in the sidebar: joins a voice channel, refuses a locked one. */
+  openChannel(channel: Channel): void;
   /** Opens the settings, optionally on a given page. */
   openSettings(page?: SettingsPage): void;
   openScreenPicker(): void;
@@ -50,6 +56,7 @@ export function MainLayout() {
   const storedLastText = useMemo(() => (meId ? loadLastText(meId) : null), [meId]);
   const [settingsPage, setSettingsPage] = useState<SettingsPage | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   // When nothing (or a deleted or now-locked channel) is selected, or we left the voice
   // channel on screen, fall back to the last text channel (this session's, then the stored
@@ -110,11 +117,56 @@ export function MainLayout() {
     return () => window.removeEventListener(OPEN_CHANNEL_EVENT, onOpen);
   }, []);
 
+  const openView = (next: View) => {
+    setSelected(next);
+    if (next.kind === 'text') setLastText(next.channelId);
+  };
+  const openChannel = (target: Channel) => {
+    if (!canAccess(me, target)) {
+      showToast('Esse canal é privado. Peça a tag para o admin.', 'info');
+      return;
+    }
+    if (target.type === 'voice' && voiceChannelId !== target.id) void voice.join(target.id);
+    openView({ kind: target.type, channelId: target.id });
+  };
+
+  // Ctrl+K: quick switcher. Alt+↑/↓: previous/next text channel in the sidebar, and with Shift
+  // the previous/next unread one.
+  const currentText = view?.kind === 'text' ? view.channelId : (fallbackId ?? null);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyK') {
+        e.preventDefault();
+        setSwitcherOpen((open) => !open);
+        return;
+      }
+      if (!e.altKey || e.ctrlKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+      if (settingsPage || pickerOpen) return;
+      e.preventDefault();
+      const s = chat.store.get();
+      const texts = sidebarOrder(s.channels, s.categories).filter(
+        (c) => c.type === 'text' && canAccess(s.me, c),
+      );
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      const at = texts.findIndex((c) => c.id === currentText);
+      let target: Channel | undefined;
+      for (let i = 1; i <= texts.length && !target; i++) {
+        const candidate = texts[(((at + step * i) % texts.length) + texts.length) % texts.length];
+        if (!candidate || candidate.id === currentText) continue;
+        if (!e.shiftKey || isUnread(candidate, s.readStates)) target = candidate;
+      }
+      if (target) {
+        setSelected({ kind: 'text', channelId: target.id });
+        setLastText(target.id);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [chat, currentText, settingsPage, pickerOpen]);
+
   const actions: LayoutActions = {
-    openView: (next) => {
-      setSelected(next);
-      if (next.kind === 'text') setLastText(next.channelId);
-    },
+    openView,
+    openChannel,
     openSettings: (page = 'voice') => setSettingsPage(page),
     openScreenPicker: () => setPickerOpen(true),
   };
@@ -175,6 +227,15 @@ export function MainLayout() {
         <SettingsModal initialPage={settingsPage} onClose={() => setSettingsPage(null)} />
       )}
       {pickerOpen && <ScreenPicker onClose={() => setPickerOpen(false)} />}
+      {switcherOpen && (
+        <QuickSwitcher
+          onOpen={(target) => {
+            setSwitcherOpen(false);
+            openChannel(target);
+          }}
+          onClose={() => setSwitcherOpen(false)}
+        />
+      )}
     </div>
   );
 }
