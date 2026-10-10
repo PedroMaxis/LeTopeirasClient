@@ -2,11 +2,24 @@ import { useCallback, useEffect, useState } from 'react';
 import type { AuthResponse } from '@letopeiras/shared';
 import { AuthScreen } from './components/AuthScreen';
 import { DebugPanel } from './components/DebugPanel';
+import { Intro } from './components/Intro';
 import { MainLayout } from './components/MainLayout';
 import { TitleBar } from './components/TitleBar';
 import { Toasts } from './components/Toasts';
+import { settings } from './lib/settings';
 import { useStore } from './lib/store';
 import { Session, SessionContext } from './state/session';
+
+/**
+ * Once per app launch: not when Windows starts us hidden in the tray, and not when main
+ * reloads a crashed renderer (a reload, not a fresh navigation). sessionStorage can't tell:
+ * Electron keeps it on disk across launches.
+ */
+function shouldPlayIntro(): boolean {
+  if (!settings.get().introAnimation || document.visibilityState === 'hidden') return false;
+  const [navigation] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+  return navigation?.type !== 'reload';
+}
 
 type Phase =
   { kind: 'loading' } | { kind: 'auth'; notice: string | null } | { kind: 'in'; session: Session };
@@ -14,6 +27,8 @@ type Phase =
 export function App() {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
   const [debugOpen, setDebugOpen] = useState(false);
+  const [intro, setIntro] = useState(shouldPlayIntro);
+  const endIntro = useCallback(() => setIntro(false), []);
 
   const start = useCallback((token: string) => {
     const session = new Session(token, (reason) => setPhase({ kind: 'auth', notice: reason }));
@@ -71,6 +86,8 @@ export function App() {
         <DebugPanel room={null} onClose={() => setDebugOpen(false)} />
       )}
       <Toasts />
+      {/* The app keeps loading (and connecting) underneath. */}
+      {intro && <Intro onDone={endIntro} />}
     </div>
   );
 }

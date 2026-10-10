@@ -27,6 +27,8 @@ const settingsSchema = z.object({
     .default('browser'),
   autoGainControl: z.boolean().default(true),
   showMembers: z.boolean().default(true),
+  /** Startup animation (components/Intro.tsx). */
+  introAnimation: z.boolean().default(true),
   /** Text chat panel beside the voice stage. */
   voiceChat: z.boolean().default(false),
   /** Voice gate: below this level (dBFS) the mic sends silence. Off = the browser decides. */

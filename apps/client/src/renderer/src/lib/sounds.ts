@@ -84,6 +84,19 @@ const SOUNDS = {
     { freq: 520, to: 420, at: 0.1, dur: 0.12 },
     { freq: 400, to: 260, at: 0.2, dur: 0.3 },
   ],
+  /** Startup animation: a soft thud of dirt being dug. */
+  introDig: [{ freq: 150, to: 80, at: 0, dur: 0.12, gain: 0.9 }],
+  /** Startup animation: the mole pops out of the ground. */
+  introPop: [
+    { freq: 220, to: 120, at: 0, dur: 0.1, gain: 0.8 },
+    { freq: 420, to: 820, at: 0.05, dur: 0.16, gain: 0.8 },
+  ],
+  /** Startup animation: the lamp's light catches the title and the crystals. */
+  introSparkle: [
+    { freq: 1568, at: 0, dur: 0.12, tone: 'bell', gain: 0.4 },
+    { freq: 2093, at: 0.08, dur: 0.12, tone: 'bell', gain: 0.35 },
+    { freq: 2637, at: 0.16, dur: 0.3, tone: 'bell', gain: 0.3 },
+  ],
 } satisfies Record<string, Note[]>;
 
 export type SoundName = keyof typeof SOUNDS;

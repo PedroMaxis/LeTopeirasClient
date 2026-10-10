@@ -117,6 +117,234 @@ a:hover {
   background-size: 20px 20px;
 }
 
+/* ---------------------------------------------------------------- intro */
+
+/* Startup animation (components/Intro.tsx), over everything but the title bar. */
+.intro {
+  position: fixed;
+  inset: 30px 0 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 60%, #241a14 0%, var(--bg-stage) 70%);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.intro-stars {
+  position: absolute;
+  inset: 0;
+}
+
+.intro-star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff5ea;
+}
+
+.intro-camera {
+  scale: 1.15;
+}
+
+/* 640 × 300 scene; the ground surface is the line at y = 190. Shown once the timeline runs. */
+.intro-stage {
+  position: relative;
+  width: 640px;
+  height: 300px;
+  visibility: hidden;
+}
+
+.intro-ground {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: 190px;
+  bottom: 0;
+  border-top: 3px solid #6e4a33;
+  border-radius: 6px 6px 0 0;
+  /* Fades out at the sides and downwards instead of ending in hard edges. */
+  mask-image:
+    linear-gradient(to right, transparent, #000 18%, #000 82%, transparent),
+    linear-gradient(to bottom, #000 40%, transparent);
+  mask-composite: intersect;
+}
+
+.intro-ground-art {
+  position: absolute;
+  left: 0;
+  top: 0;
+  fill: none;
+  stroke-linecap: round;
+}
+
+.intro-root {
+  stroke: #4a3424;
+  stroke-width: 2;
+}
+
+.intro-tunnel {
+  stroke: #0c0806;
+  stroke-width: 15;
+}
+
+.intro-pebble {
+  position: absolute;
+  border-radius: 50%;
+  background: #4a3424;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.35);
+}
+
+/* Small diamonds; `color` (set inline) feeds the glow. */
+.intro-gem {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  rotate: 45deg;
+  border-radius: 1px;
+  opacity: 0.35;
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* The lamp's light moving through the tunnel. */
+.intro-digger {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: radial-gradient(#ffe08a 0%, rgba(255, 224, 138, 0.45) 30%, transparent 70%);
+  opacity: 0;
+}
+
+.intro-client {
+  position: absolute;
+  top: 18px;
+  right: 92px;
+  display: flex;
+  gap: 0.35em;
+  font-family: var(--font-head);
+  font-size: 18px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(240, 120, 42, 0.45);
+}
+
+.intro-hole {
+  position: absolute;
+  left: 64px;
+  top: 182px;
+  width: 116px;
+  height: 18px;
+  border-radius: 50%;
+  background: #0c0806;
+  box-shadow: 0 -2px 0 #4a3424;
+}
+
+/* The bulge of earth just before the mole breaks through. */
+.intro-mound {
+  position: absolute;
+  left: 72px;
+  top: 168px;
+  width: 100px;
+  height: 26px;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+  background:
+    radial-gradient(circle at 30% 40%, #8a5f40 2px, transparent 3px),
+    radial-gradient(circle at 65% 30%, #8a5f40 1.5px, transparent 2.5px),
+    radial-gradient(ellipse at 50% 120%, #6e4a33 30%, #4a3424 80%);
+  transform-origin: 50% 100%;
+}
+
+/* Everything above ground. Clipped at the surface, so things rise out of the soil. */
+.intro-above {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 190px;
+  overflow: hidden;
+}
+
+.intro-mole {
+  position: absolute;
+  left: 70px;
+  bottom: -6px;
+  width: 104px;
+  height: 104px;
+  transform-origin: 50% 90%;
+}
+
+.intro-mole-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Glow on the helmet lamp (32, 19 in the mole's 64 × 64 viewBox). */
+.intro-lamp {
+  position: absolute;
+  left: 50%;
+  top: 29.7%;
+  width: 72px;
+  height: 72px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    rgba(255, 224, 138, 0.9) 0%,
+    rgba(255, 224, 138, 0.25) 35%,
+    transparent 70%
+  );
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Light cone from the lamp (stage 122, 123), pointing right. */
+.intro-beam {
+  position: absolute;
+  left: 122px;
+  top: 43px;
+  width: 520px;
+  height: 160px;
+  transform-origin: 0 50%;
+  clip-path: polygon(0 47%, 100% 0, 100% 100%, 0 53%);
+  background: linear-gradient(to right, rgba(255, 224, 138, 0.5), rgba(255, 224, 138, 0) 85%);
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-title {
+  position: absolute;
+  left: 192px;
+  bottom: 14px;
+  display: flex;
+  font-family: var(--font-head);
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-head);
+}
+
+.intro-letter {
+  display: inline-block;
+}
+
+.intro-dirt-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.intro-dirt {
+  position: absolute;
+  border-radius: 40%;
+}
+
 /* ---------------------------------------------------------------- title bar */
 
 .title-bar {

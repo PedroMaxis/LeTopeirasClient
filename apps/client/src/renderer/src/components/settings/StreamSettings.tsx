@@ -75,6 +75,12 @@ export function StreamSettings() {
       />
       <div className="settings-divider" />
       <ToggleRow
+        label="Animação de abertura"
+        description="A topeira cavando o nome do app ao abrir. Clique ou aperte uma tecla para pular."
+        checked={s.introAnimation}
+        onChange={(introAnimation) => updateSettings({ introAnimation })}
+      />
+      <ToggleRow
         label="Iniciar com o Windows"
         description="Abre minimizado na bandeja quando você liga o PC."
         checked={launchAtLogin === true}
