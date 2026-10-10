@@ -15,6 +15,7 @@ import { ScreenPicker } from './ScreenPicker';
 import { SettingsModal, type SettingsPage } from './settings/SettingsModal';
 import { Mole } from './ui/Mole';
 import { VoiceStage } from './voice/VoiceStage';
+import { WhatsNew } from './WhatsNew';
 
 export type View = { kind: 'text' | 'voice'; channelId: number };
 
@@ -227,6 +228,7 @@ export function MainLayout() {
         <SettingsModal initialPage={settingsPage} onClose={() => setSettingsPage(null)} />
       )}
       {pickerOpen && <ScreenPicker onClose={() => setPickerOpen(false)} />}
+      <WhatsNew />
       {switcherOpen && (
         <QuickSwitcher
           onOpen={(target) => {
