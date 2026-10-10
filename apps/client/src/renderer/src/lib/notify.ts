@@ -1,4 +1,5 @@
 import type { Channel, Message, User } from '@letopeiras/shared';
+import { hideSpoilers } from './markdown';
 import { settings } from './settings';
 import { playSound } from './sounds';
 
@@ -25,8 +26,8 @@ export function notifyMessage(
   if (context.mentionsMe && !focused) void window.api.flashWindow();
   const notify = context.mentionsMe ? !(focused && context.viewing) : notifyAll && !focused;
   if (!notify) return;
-  const body =
-    message.content.length > MAX_BODY ? `${message.content.slice(0, MAX_BODY)}…` : message.content;
+  const text = hideSpoilers(message.content);
+  const body = text.length > MAX_BODY ? `${text.slice(0, MAX_BODY)}…` : text;
   const who = author?.displayName ?? 'Alguém';
   const title = !context.mentionsMe
     ? `${who} em #${channel.name}`

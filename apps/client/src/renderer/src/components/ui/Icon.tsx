@@ -82,6 +82,7 @@ const paths = {
     </>
   ),
   chat: <path d="M4 5h16v11H9l-5 4z" />,
+  play: <path d="M8 5v14l11-7z" fill="currentColor" />,
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

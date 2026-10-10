@@ -2,7 +2,7 @@ import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeiras/shared';
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
-import { renderMarkdown } from '../../lib/markdown';
+import { hideSpoilers, renderMarkdown } from '../../lib/markdown';
 import { Store, useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useMemberCard } from '../MemberCard';
 import { Avatar } from '../ui/Avatar';
 import { IconButton } from '../ui/controls';
+import { Embeds } from './Embeds';
 import { EmojiPicker } from './EmojiPicker';
 import { useMentionAutocomplete } from './MentionSuggestions';
 import { jumpToMessage } from './events';
@@ -22,9 +23,9 @@ export const replyingTo = new Store<{
   target: { channelId: number; messageId: number; authorId: number; ping: boolean } | null;
 }>({ target: null });
 
-/** One line of plain text from a message, for reply quotes. */
+/** One line of plain text from a message, for reply quotes (spoilers stay hidden). */
 export const snippetOf = (content: string) =>
-  content
+  hideSpoilers(content)
     .replace(/[*_~`|>]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -127,6 +128,7 @@ export function MessageItem({ message, grouped }: Props) {
             )}
           </div>
         )}
+        {!editing && message.embeds.length > 0 && <Embeds embeds={message.embeds} />}
         {message.reactions.length > 0 && <Reactions message={message} />}
       </div>
       {!editing && (

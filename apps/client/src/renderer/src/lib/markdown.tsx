@@ -119,6 +119,9 @@ export function renderMarkdown(
   }
 }
 
+/** Plain-text places (reply quotes, notifications) must not give spoilers away. */
+export const hideSpoilers = (text: string) => text.replace(/\|\|[\s\S]+?\|\|/g, '(spoiler)');
+
 type TokenKind = 'code' | 'url' | 'mention' | 'spoiler' | 'bold' | 'strike' | 'italic';
 
 interface Token {

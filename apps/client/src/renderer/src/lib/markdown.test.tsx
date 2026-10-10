@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { renderMarkdown } from './markdown';
+import { hideSpoilers, renderMarkdown } from './markdown';
 
 const html = (text: string) =>
   renderToStaticMarkup(
@@ -68,6 +68,14 @@ describe('renderMarkdown', () => {
   it('groups consecutive quote lines', () => {
     expect(html('> linha 1\n> **linha 2**\nresposta')).toBe(
       '<blockquote class="md-quote">linha 1\n<strong>linha 2</strong></blockquote>resposta',
+    );
+  });
+});
+
+describe('hideSpoilers', () => {
+  it('replaces spoilers for plain-text places', () => {
+    expect(hideSpoilers('o final: ||ele morre|| e ||mais||')).toBe(
+      'o final: (spoiler) e (spoiler)',
     );
   });
 });

@@ -98,6 +98,18 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
     return () => window.removeEventListener('focus', markReadIfVisible);
   }, [markReadIfVisible]);
 
+  // Previews and images load after the text: stay at the bottom if we were there.
+  useEffect(() => {
+    const inner = scroller.current?.firstElementChild;
+    if (!inner) return;
+    const observer = new ResizeObserver(() => {
+      const el = scroller.current;
+      if (el && atBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, []);
+
   // Reply quotes and search results: scroll to a message, loading older pages if needed.
   useEffect(() => {
     let cancelled = false;

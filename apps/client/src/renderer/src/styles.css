@@ -1654,6 +1654,110 @@ a:hover {
   color: var(--text);
 }
 
+/* Link previews (components/chat/Embeds.tsx) */
+.embeds {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.embed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 432px;
+  padding: 10px 14px 12px 12px;
+  border-left: 4px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-side);
+}
+
+.embed-site {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.embed-title {
+  color: var(--link);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.embed-description {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.embed-thumb,
+.embed-video,
+.embed-image {
+  display: block;
+  position: relative;
+  margin-top: 6px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  overflow: hidden;
+  background: none;
+  width: max-content;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+.embed-thumb img,
+.embed-video img {
+  display: block;
+  max-width: 100%;
+  max-height: 240px;
+  object-fit: cover;
+}
+
+.embed-image {
+  margin-top: 0;
+}
+
+.embed-image img {
+  display: block;
+  max-width: min(400px, 100%);
+  max-height: 300px;
+  border-radius: 4px;
+}
+
+.embed-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.embed-video:hover .embed-play {
+  background: #ff0000;
+}
+
+.embed-player {
+  width: 400px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  margin-top: 6px;
+  border: none;
+  border-radius: 4px;
+}
+
 .reactions {
   display: flex;
   flex-wrap: wrap;
