@@ -9,7 +9,7 @@ describe('changelog', () => {
   });
 
   it('lists the versions after the last one seen, up to the current', () => {
-    expect(notesSince('0.1.4', '0.1.6').map((e) => e.version)).toEqual(['0.1.6', '0.1.5']);
-    expect(notesSince('0.1.6', '0.1.6')).toEqual([]);
+    expect(notesSince('0.1.4', '0.2.0').map((e) => e.version)).toEqual(['0.2.0', '0.1.5']);
+    expect(notesSince('0.2.0', '0.2.0')).toEqual([]);
   });
 });

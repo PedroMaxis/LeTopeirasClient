@@ -11,11 +11,6 @@ export const CHANGELOG: { version: string; items: string[] }[] = [
       '**Respostas**: o botão de seta responde citando a mensagem (e marca a pessoa, dá para desligar no "@"). Clique na citação para ir até a original.',
       '**Busca**: o campo no topo do chat (ou `Ctrl+F`) procura em todas as mensagens, sem ligar para acentos.',
       '**Prévia de links**: sites mostram título, descrição e imagem; vídeos do YouTube tocam ali mesmo.',
-    ],
-  },
-  {
-    version: '0.1.6',
-    items: [
       'Animação de abertura: a topeira cava o nome do app (dá para desligar em Configurações → Transmissão).',
       'A topeira ganhou vida no login, na reconexão e no começo dos canais. Clique nela no canto superior esquerdo!',
       'No canal de voz, os quadros deslizam até o lugar novo quando alguém transmite, entra ou você troca de foco.',
