@@ -1818,7 +1818,7 @@ a:hover {
   outline: none;
 }
 
-.header-search .icon {
+.header-search svg {
   position: absolute;
   right: 7px;
   pointer-events: none;
