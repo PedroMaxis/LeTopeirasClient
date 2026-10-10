@@ -1504,6 +1504,64 @@ a:hover {
   user-select: text;
 }
 
+/* Markdown (lib/markdown.tsx) */
+.md-code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg-rail);
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 0.88em;
+}
+
+.md-codeblock {
+  margin: 4px 0;
+  padding: 8px 10px;
+  max-width: 90ch;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg-rail);
+  font-family: Consolas, 'Cascadia Mono', monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.md-quote {
+  margin: 2px 0;
+  padding-left: 10px;
+  border-left: 4px solid var(--line);
+  color: var(--text);
+}
+
+.md-spoiler {
+  border-radius: 3px;
+  background: var(--bg-sel);
+  color: transparent;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.md-spoiler * {
+  visibility: hidden;
+}
+
+.md-spoiler:hover {
+  background: var(--track);
+}
+
+.md-spoiler.shown {
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: text;
+}
+
+.md-spoiler.shown * {
+  visibility: visible;
+}
+
 .message-edited {
   color: var(--text-muted);
   font-size: 11px;

@@ -1,7 +1,8 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeiras/shared';
 import { nameColor } from '../../lib/roles';
-import { formatFull, formatTime, formatTimestamp, renderContent } from '../../lib/format';
+import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
+import { renderMarkdown } from '../../lib/markdown';
 import { Store, useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
@@ -34,7 +35,7 @@ export function MessageItem({ message, grouped }: Props) {
   const mentionsMe =
     me !== null && (message.mentionIds.includes(me.id) || (message.mentionsEveryone && !mine));
 
-  const renderMention = (username: string, key: number) => {
+  const renderMention = (username: string, key: string) => {
     if (username === EVERYONE_MENTION) {
       return (
         <span key={key} className="mention me" title="Avisou todo mundo que vê o canal">
@@ -90,7 +91,7 @@ export function MessageItem({ message, grouped }: Props) {
           />
         ) : (
           <div className="message-content">
-            {renderContent(message.content, renderMention)}
+            {renderMarkdown(message.content, renderMention)}
             {message.editedAt !== null && (
               <span className="message-edited" title={formatFull(message.editedAt)}>
                 {' '}
