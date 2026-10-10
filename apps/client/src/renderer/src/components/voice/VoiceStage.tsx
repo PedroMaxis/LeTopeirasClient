@@ -71,6 +71,9 @@ function useTileSize(el: HTMLElement | null, count: number) {
  * changes: a share starts or stops, someone joins, grid ↔ focus. The positions are recorded
  * after every render, so the next change animates from what was on screen. Tiles that move
  * between the grid, the focus area and the strip are new elements, matched by their id.
+ *
+ * Not while a flip runs: Flip.getState() on elements mid-flip ends the flip at once (and the
+ * stage re-renders many times a second), so the state is recorded again when it completes.
  */
 function useLayoutFlip(
   container: RefObject<HTMLElement | null>,
@@ -79,11 +82,13 @@ function useLayoutFlip(
 ): void {
   const state = useRef<Flip.FlipState | null>(null);
   const lastKey = useRef(layoutKey);
+  const running = useRef(false);
   useLayoutEffect(() => {
     const el = container.current;
     // Hidden, everything measures 0: start over when the stage shows again.
     if (!el || hidden) {
       state.current = null;
+      running.current = false;
       return;
     }
     const targets = el.querySelectorAll<HTMLElement>('[data-flip-id]');
@@ -92,6 +97,7 @@ function useLayoutFlip(
       lastKey.current !== layoutKey &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (animate && state.current) {
+      running.current = true;
       Flip.from(state.current, {
         targets,
         duration: 0.4,
@@ -103,10 +109,14 @@ function useLayoutFlip(
             { opacity: 0, scale: 0.85 },
             { opacity: 1, scale: 1, duration: 0.3 },
           ),
+        onComplete: () => {
+          running.current = false;
+          state.current = Flip.getState(el.querySelectorAll<HTMLElement>('[data-flip-id]'));
+        },
       });
     }
     lastKey.current = layoutKey;
-    state.current = Flip.getState(targets);
+    if (!running.current) state.current = Flip.getState(targets);
   });
 }
 
