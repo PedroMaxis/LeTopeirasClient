@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type CSSProperties } from 'react';
 
 // A small curated set; the OS emoji panel (Win + .) still works for everything else.
 const GROUPS: { label: string; emojis: string }[] = [
@@ -13,9 +13,11 @@ const GROUPS: { label: string; emojis: string }[] = [
 interface Props {
   onPick(emoji: string): void;
   onClose(): void;
+  /** Overrides the default placement (above the composer's button). */
+  style?: CSSProperties | undefined;
 }
 
-export function EmojiPicker({ onPick, onClose }: Props) {
+export function EmojiPicker({ onPick, onClose, style }: Props) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKeyDown);
@@ -25,7 +27,7 @@ export function EmojiPicker({ onPick, onClose }: Props) {
   return (
     <>
       <div className="context-backdrop" onMouseDown={onClose} />
-      <div className="emoji-picker" role="dialog" aria-label="Emojis">
+      <div className="emoji-picker" role="dialog" aria-label="Emojis" style={style}>
         {GROUPS.map((group) => (
           <div key={group.label}>
             <div className="emoji-group">{group.label.toUpperCase()}</div>

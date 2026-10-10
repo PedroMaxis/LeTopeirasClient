@@ -1,4 +1,5 @@
 import {
+  LIMITS,
   MENTION_PATTERN,
   TYPING_TIMEOUT_MS,
   type Category,
@@ -29,6 +30,8 @@ export interface PendingMessage {
   content: string;
   createdAt: number;
   failed: boolean;
+  /** Answering this message; `replyPing` mentions its author. */
+  reply?: { replyToId: number; replyPing: boolean } | undefined;
 }
 
 export interface ChatState {
@@ -136,13 +139,14 @@ export class ChatClient {
     }
   }
 
-  sendMessage(channelId: number, content: string): void {
+  sendMessage(channelId: number, content: string, reply?: PendingMessage['reply']): void {
     const pending: PendingMessage = {
       nonce: crypto.randomUUID(),
       channelId,
       content,
       createdAt: Date.now(),
       failed: false,
+      reply,
     };
     this.store.set((s) => ({ pending: [...s.pending, pending] }));
     this.lastTypingSent.delete(channelId);
@@ -158,6 +162,19 @@ export class ChatClient {
 
   discardMessage(nonce: string): void {
     this.store.set((s) => ({ pending: s.pending.filter((p) => p.nonce !== nonce) }));
+  }
+
+  /** Adds our `emoji` to a message, or takes it back if we already reacted with it. */
+  toggleReaction(channelId: number, messageId: number, emoji: string): void {
+    const { me, messages } = this.store.get();
+    const message = messages[channelId]?.messages.find((m) => m.id === messageId);
+    const mine = message?.reactions.some(
+      (r) => r.emoji === emoji && r.userIds.includes(me?.id ?? 0),
+    );
+    this.sendOrWarn({
+      type: mine ? 'reaction.remove' : 'reaction.add',
+      data: { messageId, emoji },
+    });
   }
 
   editMessage(messageId: number, content: string): void {
@@ -303,15 +320,36 @@ export class ChatClient {
 
       case 'message.updated': {
         const { message } = event.data;
+        // Replies quoting it show the new text too.
+        const snippet = message.content.slice(0, LIMITS.replySnippetMax);
         this.updateMessages(message.channelId, (list) =>
-          list.map((m) => (m.id === message.id ? message : m)),
+          list.map((m) =>
+            m.id === message.id
+              ? message
+              : m.replyToId === message.id && m.replyTo
+                ? { ...m, replyTo: { ...m.replyTo, content: snippet } }
+                : m,
+          ),
+        );
+        return;
+      }
+
+      case 'message.reactions': {
+        const { channelId, messageId, reactions } = event.data;
+        this.updateMessages(channelId, (list) =>
+          list.map((m) => (m.id === messageId ? { ...m, reactions } : m)),
         );
         return;
       }
 
       case 'message.deleted': {
         const { channelId, messageId } = event.data;
-        this.updateMessages(channelId, (list) => list.filter((m) => m.id !== messageId));
+        // Replies to it stay, showing "Mensagem original apagada".
+        this.updateMessages(channelId, (list) =>
+          list
+            .filter((m) => m.id !== messageId)
+            .map((m) => (m.replyToId === messageId ? { ...m, replyTo: null } : m)),
+        );
         this.store.set((s) => ({
           channels: s.channels.map((c) => {
             if (c.id !== channelId || c.lastMessageId !== messageId) return c;
@@ -430,7 +468,12 @@ export class ChatClient {
   private trySend(pending: PendingMessage): void {
     const sent = this.gateway.send({
       type: 'message.send',
-      data: { channelId: pending.channelId, content: pending.content, nonce: pending.nonce },
+      data: {
+        channelId: pending.channelId,
+        content: pending.content,
+        nonce: pending.nonce,
+        ...pending.reply,
+      },
     });
     if (!sent) this.updatePending(pending.nonce, { failed: true });
   }

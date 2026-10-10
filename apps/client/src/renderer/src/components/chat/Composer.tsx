@@ -5,7 +5,7 @@ import { useSession } from '../../state/session';
 import { IconButton } from '../ui/controls';
 import { INSERT_MENTION_EVENT } from '../MemberCard';
 import { EmojiPicker } from './EmojiPicker';
-import { editingMessage } from './MessageItem';
+import { editingMessage, replyingTo } from './MessageItem';
 import { useMentionAutocomplete } from './MentionSuggestions';
 
 export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): void }) {
@@ -52,10 +52,23 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
     return () => window.removeEventListener(INSERT_MENTION_EVENT, onInsert);
   });
 
+  const reply = useStore(replyingTo, (s) => (s.target?.channelId === channel.id ? s.target : null));
+  const replyAuthor = useStore(chat.store, (s) => (reply ? s.users[reply.authorId] : undefined));
+  const cancelReply = () => replyingTo.set({ target: null });
+  // Picking "Responder" puts the cursor here.
+  useEffect(() => {
+    if (reply) input.current?.focus();
+  }, [reply]);
+
   const send = () => {
     const content = value.trim();
     if (!content) return;
-    chat.sendMessage(channel.id, content);
+    chat.sendMessage(
+      channel.id,
+      content,
+      reply ? { replyToId: reply.messageId, replyPing: reply.ping } : undefined,
+    );
+    if (reply) cancelReply();
     setValue('');
     mentions.reset();
   };
@@ -63,7 +76,11 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (mentions.onKeyDown(e)) return;
     // Esc goes back to the newest messages (the emoji picker closes itself instead).
-    if (e.key === 'Escape' && !emojiOpen) onEscape();
+    if (e.key === 'Escape' && !emojiOpen) {
+      // Esc first drops the reply, then goes back to the newest messages.
+      if (reply) cancelReply();
+      else onEscape();
+    }
     // ↑ in an empty box edits your last message, like in Discord.
     if (e.key === 'ArrowUp' && !value && !e.altKey && !e.ctrlKey && !e.shiftKey) {
       const { me, messages } = chat.store.get();
@@ -81,7 +98,27 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
 
   return (
     <div className="composer">
-      <div className="composer-box">
+      {reply && (
+        <div className="reply-bar">
+          <span>
+            Respondendo a <b>{replyAuthor?.displayName ?? 'Alguém'}</b>
+          </span>
+          <button
+            type="button"
+            className={`reply-ping ${reply.ping ? 'on' : ''}`}
+            title={
+              reply.ping
+                ? 'A pessoa vai ser marcada. Clique para não marcar.'
+                : 'A pessoa não vai ser marcada. Clique para marcar.'
+            }
+            onClick={() => replyingTo.set({ target: { ...reply, ping: !reply.ping } })}
+          >
+            @ {reply.ping ? 'LIGADO' : 'DESLIGADO'}
+          </button>
+          <IconButton icon="close" size={16} label="Cancelar resposta" onClick={cancelReply} />
+        </div>
+      )}
+      <div className={`composer-box ${reply ? 'replying' : ''}`}>
         <textarea
           ref={input}
           className="composer-input"

@@ -9,11 +9,13 @@ import {
 } from 'react';
 import type { Channel, Message } from '@letopeiras/shared';
 import { formatDay, sameDay } from '../../lib/format';
+import { showToast } from '../../lib/toast';
 import { useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { Icon } from '../ui/Icon';
 import { Mole } from '../ui/Mole';
+import { JUMP_TO_MESSAGE_EVENT, type JumpToMessage } from './events';
 import { MessageItem, PendingItem } from './MessageItem';
 
 /** Consecutive messages from the same author within this window share one header. */
@@ -22,6 +24,10 @@ const LOAD_MORE_THRESHOLD_PX = 300;
 const BOTTOM_THRESHOLD_PX = 48;
 
 const EMPTY: Message[] = [];
+/** How far back a jump may load (pages of history) before giving up. */
+const MAX_JUMP_PAGES = 30;
+
+const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
 export interface MessageListHandle {
   jumpToBottom(): void;
@@ -91,6 +97,41 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
     return () => window.removeEventListener('focus', markReadIfVisible);
   }, [markReadIfVisible]);
 
+  // Reply quotes and search results: scroll to a message, loading older pages if needed.
+  useEffect(() => {
+    let cancelled = false;
+    const onJump = (event: Event) => {
+      const { channelId, messageId } = (event as CustomEvent<JumpToMessage>).detail;
+      if (channelId !== channel.id) return;
+      void (async () => {
+        for (let page = 0; page <= MAX_JUMP_PAGES && !cancelled; page++) {
+          const el = scroller.current?.querySelector<HTMLElement>(
+            `[data-message-id="${messageId}"]`,
+          );
+          if (el) {
+            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            el.classList.remove('flash');
+            void el.offsetWidth; // restart the animation
+            el.classList.add('flash');
+            return;
+          }
+          const entry = chat.store.get().messages[channel.id];
+          const oldest = entry?.messages[0]?.id;
+          if (entry && (!entry.hasMore || (oldest !== undefined && oldest < messageId))) break;
+          await chat.loadMessages(channel.id);
+          await nextFrame();
+          await nextFrame();
+        }
+        if (!cancelled) showToast('Não achei essa mensagem; talvez tenha sido apagada.', 'info');
+      })();
+    };
+    window.addEventListener(JUMP_TO_MESSAGE_EVENT, onJump);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(JUMP_TO_MESSAGE_EVENT, onJump);
+    };
+  }, [chat, channel.id]);
+
   const jumpToBottom = useCallback(() => {
     const el = scroller.current;
     el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
@@ -136,6 +177,7 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
             const grouped =
               !isNew &&
               !newDay &&
+              message.replyToId === null &&
               prev !== undefined &&
               prev.authorId === message.authorId &&
               message.createdAt - prev.createdAt < GROUP_WINDOW_MS;

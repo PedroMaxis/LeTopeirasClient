@@ -82,6 +82,13 @@ const paths = {
     </>
   ),
   chat: <path d="M4 5h16v11H9l-5 4z" />,
+  reply: <path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z" />,
+  smilePlus: (
+    <>
+      <circle cx="11" cy="13" r="8" />
+      <path d="M8 15c1.5 1.6 4.5 1.6 6 0M8.5 10.5h.01M13.5 10.5h.01M19 2v6M16 5h6" />
+    </>
+  ),
   grid: (
     <>
       <rect x="3" y="3" width="8" height="8" rx="1.5" />
