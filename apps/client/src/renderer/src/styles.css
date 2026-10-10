@@ -2900,6 +2900,135 @@ button.tag-chip:hover {
 
 /* ------------------------------------------------------- context menus */
 
+/* Profile card (components/MemberCard.tsx) */
+.member-card {
+  position: fixed;
+  z-index: 46;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--bg-rail);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  animation: member-card-in 0.12s ease-out;
+}
+
+@keyframes member-card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+.member-card-banner {
+  height: 56px;
+}
+
+.member-card-avatar {
+  margin: -36px 0 0 16px;
+  width: max-content;
+  border: 6px solid var(--bg-rail);
+  border-radius: 50%;
+}
+
+.member-card-avatar .presence-dot {
+  width: 18px;
+  height: 18px;
+  border-color: var(--bg-rail);
+}
+
+.member-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 16px 16px;
+}
+
+.member-card-name {
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-head);
+}
+
+.member-card-username {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: -6px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.member-card-admin {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(240, 120, 42, 0.18);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.member-card-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.presence-dot.inline {
+  position: static;
+  width: 10px;
+  height: 10px;
+  border: none;
+}
+
+.member-card-roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.role-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.message-avatar,
+.message-author {
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.message-avatar {
+  align-self: flex-start;
+  border-radius: 50%;
+}
+
+.message-author:hover {
+  text-decoration: underline;
+}
+
+.member {
+  cursor: pointer;
+}
+
 .context-backdrop {
   position: fixed;
   inset: 0;

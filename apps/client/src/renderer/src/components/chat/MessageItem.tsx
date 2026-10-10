@@ -7,6 +7,7 @@ import { Store, useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
+import { useMemberCard } from '../MemberCard';
 import { Avatar } from '../ui/Avatar';
 import { IconButton } from '../ui/controls';
 import { useMentionAutocomplete } from './MentionSuggestions';
@@ -30,6 +31,7 @@ export function MessageItem({ message, grouped }: Props) {
   const editing = useStore(editingMessage, (s) => s.id === message.id);
   const setEditing = (on: boolean) => editingMessage.set({ id: on ? message.id : null });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const card = useMemberCard();
 
   const mine = message.authorId === me?.id;
   const mentionsMe =
@@ -66,14 +68,22 @@ export function MessageItem({ message, grouped }: Props) {
           {formatTime(message.createdAt)}
         </span>
       ) : (
-        <Avatar user={author} size={40} />
+        <button type="button" className="message-avatar" onClick={card.open(message.authorId)}>
+          <Avatar user={author} size={40} />
+        </button>
       )}
+      {card.card}
       <div className="message-body">
         {!grouped && (
           <div className="message-header">
-            <span className="message-author" style={{ color: nameColor(author, roles) }}>
+            <button
+              type="button"
+              className="message-author"
+              style={{ color: nameColor(author, roles) }}
+              onClick={card.open(message.authorId)}
+            >
               {author?.displayName ?? 'Alguém'}
-            </span>
+            </button>
             <span className="message-time" title={formatFull(message.createdAt)}>
               {formatTimestamp(message.createdAt)}
             </span>

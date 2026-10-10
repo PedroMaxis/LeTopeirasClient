@@ -3,6 +3,7 @@ import { LIMITS, type Channel } from '@letopeiras/shared';
 import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
 import { IconButton } from '../ui/controls';
+import { INSERT_MENTION_EVENT } from '../MemberCard';
 import { EmojiPicker } from './EmojiPicker';
 import { editingMessage } from './MessageItem';
 import { useMentionAutocomplete } from './MentionSuggestions';
@@ -37,6 +38,19 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
       el?.setSelectionRange(start + emoji.length, start + emoji.length);
     });
   };
+
+  // "Marcar" in a member card types the mention here.
+  useEffect(() => {
+    const onInsert = (event: Event) => {
+      const el = input.current;
+      const at = el?.selectionStart ?? value.length;
+      const before = value.slice(0, at);
+      const space = before && !/\s$/.test(before) ? ' ' : '';
+      insertEmoji(`${space}@${(event as CustomEvent<string>).detail} `);
+    };
+    window.addEventListener(INSERT_MENTION_EVENT, onInsert);
+    return () => window.removeEventListener(INSERT_MENTION_EVENT, onInsert);
+  });
 
   const send = () => {
     const content = value.trim();
