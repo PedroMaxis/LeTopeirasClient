@@ -5,6 +5,15 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.2.0',
+    items: [
+      '**Reações**: passe o mouse numa mensagem e clique no rostinho com +; clique numa reação para somar a sua.',
+      '**Respostas**: o botão de seta responde citando a mensagem (e marca a pessoa, dá para desligar no "@"). Clique na citação para ir até a original.',
+      '**Busca**: o campo no topo do chat (ou `Ctrl+F`) procura em todas as mensagens, sem ligar para acentos.',
+      '**Prévia de links**: sites mostram título, descrição e imagem; vídeos do YouTube tocam ali mesmo.',
+    ],
+  },
+  {
     version: '0.1.6',
     items: [
       'Animação de abertura: a topeira cava o nome do app (dá para desligar em Configurações → Transmissão).',
