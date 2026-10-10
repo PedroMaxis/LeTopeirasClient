@@ -156,6 +156,24 @@ export const messageHistoryResponseSchema = z.object({
 });
 export type MessageHistoryResponse = z.infer<typeof messageHistoryResponseSchema>;
 
+/** GET /search: words (all of them, as prefixes, accents ignored) in the channels you can see. */
+export const searchQuerySchema = z.object({
+  q: z.string().trim().min(1).max(200),
+  /** Only this channel. */
+  channelId: z.coerce.number().int().positive().optional(),
+  /** Older than this message id (next page). */
+  before: z.coerce.number().int().positive().optional(),
+  limit: z.coerce.number().int().min(1).max(LIMITS.searchPageMax).default(LIMITS.searchPageDefault),
+});
+export type SearchQuery = z.input<typeof searchQuerySchema>;
+
+/** Matches newest first. */
+export const searchResponseSchema = z.object({
+  messages: z.array(messageSchema),
+  hasMore: z.boolean(),
+});
+export type SearchResponse = z.infer<typeof searchResponseSchema>;
+
 export const voiceTokenRequestSchema = z.object({
   channelId: idSchema,
 });

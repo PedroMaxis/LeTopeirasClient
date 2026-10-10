@@ -33,13 +33,52 @@ const toMessage = (row: MessageRow, reactions: Reaction[] = []): Message => ({
 });
 
 // The replied-to message comes along as a snippet (null once it's deleted).
+const MESSAGE_COLUMNS = `
+  m.*,
+  (SELECT group_concat(user_id) FROM message_mentions mm WHERE mm.message_id = m.id) AS mention_ids,
+  r.author_id AS reply_author_id,
+  substr(r.content, 1, ${LIMITS.replySnippetMax}) AS reply_content`;
+
 const SELECT_MESSAGE = `
-  SELECT m.*,
-         (SELECT group_concat(user_id) FROM message_mentions mm WHERE mm.message_id = m.id) AS mention_ids,
-         r.author_id AS reply_author_id,
-         substr(r.content, 1, ${LIMITS.replySnippetMax}) AS reply_content
+  SELECT ${MESSAGE_COLUMNS}
   FROM messages m
   LEFT JOIN messages r ON r.id = m.reply_to_id`;
+
+/**
+ * Messages matching an FTS5 query in the given channels, newest first, older than `before`.
+ * `match` must already be a safe FTS5 expression (see services/search.ts).
+ */
+export function searchMessages(
+  db: Db,
+  options: { match: string; channelIds: number[]; before?: number | undefined; limit: number },
+): { messages: Message[]; hasMore: boolean } {
+  if (options.channelIds.length === 0) return { messages: [], hasMore: false };
+  const rows = db
+    .prepare<(string | number)[], MessageRow>(
+      `SELECT ${MESSAGE_COLUMNS}
+       FROM messages_fts f
+       JOIN messages m ON m.id = f.rowid
+       LEFT JOIN messages r ON r.id = m.reply_to_id
+       WHERE messages_fts MATCH ?
+         AND m.channel_id IN (${options.channelIds.map(() => '?').join(',')})
+         AND m.id < ?
+       ORDER BY m.id DESC
+       LIMIT ?`,
+    )
+    .all(
+      options.match,
+      ...options.channelIds,
+      options.before ?? Number.MAX_SAFE_INTEGER,
+      options.limit + 1,
+    );
+  const hasMore = rows.length > options.limit;
+  const page = rows.slice(0, options.limit);
+  const reactions = reactionsOf(
+    db,
+    page.map((r) => r.id),
+  );
+  return { messages: page.map((r) => toMessage(r, reactions.get(r.id))), hasMore };
+}
 
 /** Reactions of these messages: emojis by first use, users in the order they reacted. */
 function reactionsOf(db: Db, messageIds: number[]): Map<number, Reaction[]> {

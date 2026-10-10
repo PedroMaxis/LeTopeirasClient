@@ -3,11 +3,13 @@ import {
   createChannelRequestSchema,
   idSchema,
   messageHistoryQuerySchema,
+  searchQuerySchema,
   updateCategoryRequestSchema,
   updateChannelRequestSchema,
   type Category,
   type Channel,
   type MessageHistoryResponse,
+  type SearchResponse,
 } from '@letopeiras/shared';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -22,6 +24,7 @@ import {
 } from '../../repo/categories';
 import { createChannel, deleteChannel, findChannel, updateChannel } from '../../repo/channels';
 import { messageHistory } from '../../services/messages';
+import { search } from '../../services/search';
 import { getAdmin, getAuth, requireAuth, type AppContext } from '../context';
 import { applyPermissionChange } from '../permissions';
 
@@ -82,6 +85,11 @@ export function channelRoutes(app: FastifyInstance, ctx: AppContext): void {
       return messageHistory(db, user, id, parse(messageHistoryQuerySchema, request.query));
     },
   );
+
+  app.get('/search', { preHandler }, async (request): Promise<SearchResponse> => {
+    const { user } = getAuth(request);
+    return search(db, user, parse(searchQuerySchema, request.query));
+  });
 
   // ---------------------------------------------------------------- categories
 

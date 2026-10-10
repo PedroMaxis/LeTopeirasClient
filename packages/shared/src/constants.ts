@@ -18,6 +18,8 @@ export const LIMITS = {
   reactionsPerMessage: 20,
   /** Characters of the original message quoted in a reply. */
   replySnippetMax: 200,
+  searchPageDefault: 25,
+  searchPageMax: 50,
 } as const;
 
 // One emoji: pictographs plus the joiners, variation selectors, skin tones and keycaps that
