@@ -9,6 +9,8 @@ import { showToast } from '../lib/toast';
 import { useSession } from '../state/session';
 import { ChannelSidebar } from './sidebar/ChannelSidebar';
 import { ChatView } from './chat/ChatView';
+import { jumpToMessage } from './chat/events';
+import { SearchPanel, type SearchRequest } from './chat/SearchPanel';
 import { MemberList } from './MemberList';
 import { QuickSwitcher } from './QuickSwitcher';
 import { ScreenPicker } from './ScreenPicker';
@@ -58,6 +60,7 @@ export function MainLayout() {
   const [settingsPage, setSettingsPage] = useState<SettingsPage | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [search, setSearch] = useState<SearchRequest | null>(null);
 
   // When nothing (or a deleted or now-locked channel) is selected, or we left the voice
   // channel on screen, fall back to the last text channel (this session's, then the stored
@@ -200,8 +203,24 @@ export function MainLayout() {
         )}
         {channel && view?.kind === 'text' && (
           <div className="chat-with-members">
-            <ChatView channel={channel} />
-            {showMembers && <MemberList />}
+            <ChatView
+              channel={channel}
+              onSearch={(query) => setSearch({ query, channelId: search?.channelId ?? null })}
+            />
+            {search ? (
+              <SearchPanel
+                request={search}
+                channelId={channel.id}
+                onScope={(channelId) => setSearch({ ...search, channelId })}
+                onOpen={(message) => {
+                  openView({ kind: 'text', channelId: message.channelId });
+                  jumpToMessage({ channelId: message.channelId, messageId: message.id });
+                }}
+                onClose={() => setSearch(null)}
+              />
+            ) : (
+              showMembers && <MemberList />
+            )}
           </div>
         )}
         {voiceChannel && (

@@ -10,7 +10,11 @@ import {
   type CreateRoleRequest,
   type InviteResponse,
   type LoginRequest,
+  messageHistoryResponseSchema,
+  searchResponseSchema,
   type MessageHistoryResponse,
+  type SearchQuery,
+  type SearchResponse,
   type RegisterRequest,
   type Role,
   type UpdateCategoryRequest,
@@ -94,11 +98,19 @@ export class Api {
 
   logout = () => this.call<undefined>('POST', '/auth/logout');
 
-  messages = (channelId: number, before?: number) =>
-    this.call<MessageHistoryResponse>(
-      'GET',
-      `/channels/${channelId}/messages${before ? `?before=${before}` : ''}`,
+  // Parsed so message fields added later (reactions, replies) get their defaults.
+  messages = async (channelId: number, before?: number): Promise<MessageHistoryResponse> =>
+    messageHistoryResponseSchema.parse(
+      await this.call('GET', `/channels/${channelId}/messages${before ? `?before=${before}` : ''}`),
     );
+
+  search = async (query: SearchQuery): Promise<SearchResponse> => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+      if (value !== undefined) params.set(key, String(value));
+    }
+    return searchResponseSchema.parse(await this.call('GET', `/search?${params}`));
+  };
 
   voiceToken = (channelId: number) =>
     this.call<VoiceTokenResponse>('POST', '/voice/token', { channelId });

@@ -15,7 +15,7 @@ import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { Icon } from '../ui/Icon';
 import { Mole } from '../ui/Mole';
-import { JUMP_TO_MESSAGE_EVENT, type JumpToMessage } from './events';
+import { JUMP_TO_MESSAGE_EVENT, takePendingJump } from './events';
 import { MessageItem, PendingItem } from './MessageItem';
 
 /** Consecutive messages from the same author within this window share one header. */
@@ -26,6 +26,7 @@ const BOTTOM_THRESHOLD_PX = 48;
 const EMPTY: Message[] = [];
 /** How far back a jump may load (pages of history) before giving up. */
 const MAX_JUMP_PAGES = 30;
+const JUMP_TIMEOUT_MS = 15_000;
 
 const nextFrame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
@@ -100,31 +101,39 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
   // Reply quotes and search results: scroll to a message, loading older pages if needed.
   useEffect(() => {
     let cancelled = false;
-    const onJump = (event: Event) => {
-      const { channelId, messageId } = (event as CustomEvent<JumpToMessage>).detail;
-      if (channelId !== channel.id) return;
-      void (async () => {
-        for (let page = 0; page <= MAX_JUMP_PAGES && !cancelled; page++) {
-          const el = scroller.current?.querySelector<HTMLElement>(
-            `[data-message-id="${messageId}"]`,
-          );
-          if (el) {
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            el.classList.remove('flash');
-            void el.offsetWidth; // restart the animation
-            el.classList.add('flash');
-            return;
-          }
-          const entry = chat.store.get().messages[channel.id];
-          const oldest = entry?.messages[0]?.id;
-          if (entry && (!entry.hasMore || (oldest !== undefined && oldest < messageId))) break;
-          await chat.loadMessages(channel.id);
-          await nextFrame();
-          await nextFrame();
+    const jump = async (messageId: number) => {
+      const deadline = Date.now() + JUMP_TIMEOUT_MS;
+      let pages = 0;
+      while (!cancelled && Date.now() < deadline) {
+        const el = scroller.current?.querySelector<HTMLElement>(`[data-message-id="${messageId}"]`);
+        if (el) {
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          el.classList.remove('flash');
+          void el.offsetWidth; // restart the animation
+          el.classList.add('flash');
+          return;
         }
-        if (!cancelled) showToast('Não achei essa mensagem; talvez tenha sido apagada.', 'info');
-      })();
+        const entry = chat.store.get().messages[channel.id];
+        if (entry?.loading) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          continue;
+        }
+        const oldest = entry?.messages[0]?.id;
+        // Already loaded back past it: it was deleted.
+        if (entry && (!entry.hasMore || (oldest !== undefined && oldest < messageId))) break;
+        if (pages++ >= MAX_JUMP_PAGES) break;
+        await chat.loadMessages(channel.id);
+        await nextFrame();
+        await nextFrame();
+      }
+      if (!cancelled) showToast('Não achei essa mensagem; talvez tenha sido apagada.', 'info');
     };
+    const onJump = () => {
+      const target = takePendingJump(channel.id);
+      if (target) void jump(target.messageId);
+    };
+    // A search result in another channel: the jump was asked before this list existed.
+    onJump();
     window.addEventListener(JUMP_TO_MESSAGE_EVENT, onJump);
     return () => {
       cancelled = true;
