@@ -1,3 +1,4 @@
+import { dirname, join } from 'node:path';
 import { z } from 'zod';
 
 export const DEFAULT_DATABASE_PATH = './data/letopeiras.db';
@@ -6,6 +7,8 @@ const envSchema = z.object({
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_PATH: z.string().min(1).default(DEFAULT_DATABASE_PATH),
+  /** Where uploaded images live. Default: `uploads/` next to the database. */
+  UPLOADS_DIR: z.string().min(1).optional(),
   /** Set when running behind Caddy so request.ip is the real client address. */
   TRUST_PROXY: z
     .enum(['true', 'false'])
@@ -25,6 +28,7 @@ export interface ServerConfig {
   host: string;
   port: number;
   databasePath: string;
+  uploadsDir: string;
   trustProxy: boolean;
   livekit: { url: string; apiUrl: string; apiKey: string; apiSecret: string };
   sessionTtlMs: number;
@@ -42,6 +46,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     host: e.HOST,
     port: e.PORT,
     databasePath: e.DATABASE_PATH,
+    uploadsDir: e.UPLOADS_DIR ?? join(dirname(e.DATABASE_PATH), 'uploads'),
     trustProxy: e.TRUST_PROXY,
     livekit: {
       url: e.LIVEKIT_URL,

@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { WebSocket } from '@fastify/websocket';
 import type {
   AuthResponse,
@@ -18,6 +21,7 @@ export const testConfig: ServerConfig = {
   host: '127.0.0.1',
   port: 0,
   databasePath: ':memory:',
+  uploadsDir: '',
   trustProxy: false,
   livekit: {
     url: 'ws://127.0.0.1:7880',
@@ -37,8 +41,9 @@ export const PASSWORD = 'correct horse battery';
  */
 export async function createTestApp(options: { fetchPreview?: PreviewFetcher } = {}) {
   const db = openDatabase(':memory:');
+  const uploadsDir = mkdtempSync(join(tmpdir(), 'letopeiras-uploads-'));
   const app = buildApp({
-    config: testConfig,
+    config: { ...testConfig, uploadsDir },
     db,
     fetchPreview: options.fetchPreview ?? (() => Promise.resolve(null)),
   });
@@ -80,9 +85,28 @@ export async function createTestApp(options: { fetchPreview?: PreviewFetcher } =
   const close = async () => {
     await app.close();
     db.close();
+    rmSync(uploadsDir, { recursive: true, force: true });
   };
 
-  return { app, db, admin, login, register, close };
+  return { app, db, admin, login, register, close, uploadsDir };
+}
+
+/** A multipart/form-data body with one file field named `file`. */
+export function multipartFile(data: Buffer, filename = 'image.png', type = 'image/png') {
+  const boundary = `----letopeiras${Math.random().toString(16).slice(2)}`;
+  const payload = Buffer.concat([
+    Buffer.from(
+      `--${boundary}` +
+        '\r\n' +
+        `Content-Disposition: form-data; name="file"; filename="${filename}"` +
+        '\r\n' +
+        `Content-Type: ${type}` +
+        '\r\n\r\n',
+    ),
+    data,
+    Buffer.from('\r\n' + `--${boundary}--` + '\r\n'),
+  ]);
+  return { payload, headers: { 'content-type': `multipart/form-data; boundary=${boundary}` } };
 }
 
 export const bearer = (token: string) => ({ authorization: `Bearer ${token}` });

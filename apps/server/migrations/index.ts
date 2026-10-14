@@ -191,4 +191,26 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    version: 8,
+    name: 'attachments',
+    sql: `
+      -- Images uploaded for messages. message_id is null until the message is sent;
+      -- unused rows are swept after an hour. The file is uploads/<hash[0..2]>/<hash>.webp,
+      -- shared by every row (and avatar) with the same content.
+      CREATE TABLE attachments (
+        id          INTEGER PRIMARY KEY,
+        uploader_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message_id  INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+        position    INTEGER NOT NULL DEFAULT 0,
+        hash        TEXT    NOT NULL,
+        width       INTEGER NOT NULL,
+        height      INTEGER NOT NULL,
+        size        INTEGER NOT NULL,
+        created_at  INTEGER NOT NULL
+      );
+      CREATE INDEX attachments_message ON attachments (message_id);
+      CREATE INDEX attachments_hash ON attachments (hash);
+    `,
+  },
 ];
