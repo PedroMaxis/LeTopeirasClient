@@ -1,5 +1,6 @@
 import {
   ConnectionState,
+  createLocalVideoTrack,
   DisconnectReason,
   LocalAudioTrack,
   Room,
@@ -20,6 +21,8 @@ import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
   applyShareMode,
   audioCaptureOptions,
+  cameraCaptureOptions,
+  cameraPublishOptions,
   roomOptions,
   screenAudioPublishOptions,
   screenCaptureOptions,
@@ -43,6 +46,8 @@ export interface VoiceState {
   muted: boolean;
   deafened: boolean;
   screenTrack: LocalVideoTrack | null;
+  /** Our webcam, while it is on. */
+  cameraTrack: LocalVideoTrack | null;
   shareMode: ShareMode;
   shareQuality: ShareQuality;
   /** Whether to send PC audio with the next screen share (picker toggle). */
@@ -122,6 +127,7 @@ export class VoiceClient {
     muted: false,
     deafened: false,
     screenTrack: null,
+    cameraTrack: null,
     shareMode: settings.get().defaultShareMode,
     shareQuality: settings.get().defaultShareQuality,
     shareAudio: true,
@@ -371,6 +377,34 @@ export class VoiceClient {
     await room?.localParticipant.unpublishTrack(screenTrack, true);
   }
 
+  /** Turns our webcam on or off. The camera can also end outside the app (unplugged). */
+  async toggleCamera(): Promise<void> {
+    const { room, cameraTrack } = this.state;
+    if (!room) return;
+    if (cameraTrack) {
+      this.store.set({ cameraTrack: null });
+      logEvent('camera.stop');
+      await room.localParticipant.unpublishTrack(cameraTrack, true);
+      return;
+    }
+    try {
+      const track = await createLocalVideoTrack(cameraCaptureOptions(settings.get()));
+      track.once(TrackEvent.Ended, () => {
+        if (this.state.cameraTrack === track) void this.toggleCamera();
+      });
+      await room.localParticipant.publishTrack(track, cameraPublishOptions);
+      if (this.state.room !== room) {
+        track.stop();
+        return;
+      }
+      this.store.set({ cameraTrack: track });
+      logEvent('camera.start', { codec: cameraPublishOptions.videoCodec, simulcast: true });
+    } catch (err) {
+      logEvent('camera.error', { error: errorMessage(err) });
+      showToast(`Não foi possível ligar a câmera: ${errorMessage(err)}`);
+    }
+  }
+
   /** Someone's screen share audio volume for us, 0–200 %. Saved per user. */
   setShareVolume(userId: number, volume: number): void {
     updateSettings({ shareVolumes: { ...settings.get().shareVolumes, [userId]: volume } });
@@ -558,6 +592,7 @@ export class VoiceClient {
       status: 'idle',
       room: null,
       screenTrack: null,
+      cameraTrack: null,
       sharingAudio: false,
       shareWatch: new Map(),
       speaking: new Set(),
@@ -822,6 +857,10 @@ export class VoiceClient {
     }
     if (prev.outputDeviceId !== next.outputDeviceId) {
       await this.mixer.setSinkId(next.outputDeviceId);
+    }
+    const { cameraTrack } = this.state;
+    if (cameraTrack && prev.videoDeviceId !== next.videoDeviceId) {
+      await cameraTrack.restartTrack(cameraCaptureOptions(next));
     }
     const captureChanged =
       prev.inputDeviceId !== next.inputDeviceId ||

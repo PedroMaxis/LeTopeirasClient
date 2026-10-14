@@ -256,6 +256,11 @@ function VoiceMember({
             AO VIVO
           </span>
         )}
+        {participant.camera && (
+          <span title="Câmera ligada">
+            <Icon name="video" size={14} />
+          </span>
+        )}
         {participant.deafened ? (
           <Icon name="headphonesOff" size={14} />
         ) : (

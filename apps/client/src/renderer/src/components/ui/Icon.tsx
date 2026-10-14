@@ -61,6 +61,18 @@ const paths = {
       <path d="M8 20h8M12 16v4" />
     </>
   ),
+  video: (
+    <>
+      <rect x="3" y="6" width="13" height="12" rx="2" />
+      <path d="M16 10l5-3v10l-5-3z" />
+    </>
+  ),
+  videoOff: (
+    <>
+      <path d="M16 10l5-3v10l-5-3zM3 6h9m4 4v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
   screens: (
     <>
       <rect x="2" y="5" width="12" height="9" rx="1.5" />

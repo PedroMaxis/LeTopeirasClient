@@ -2,6 +2,7 @@ import type { VoiceChannelState } from '@letopeiras/shared';
 
 interface Presence {
   screenSharing: boolean;
+  camera: boolean;
 }
 
 /**
@@ -19,7 +20,7 @@ export class VoiceStateStore {
   join(channelId: number, userId: number): number[] {
     const members = this.members(channelId);
     if (members.has(userId)) return [];
-    members.set(userId, { screenSharing: false });
+    members.set(userId, { screenSharing: false, camera: false });
     return [channelId];
   }
 
@@ -30,12 +31,12 @@ export class VoiceStateStore {
     return [channelId];
   }
 
-  setScreenSharing(channelId: number, userId: number, screenSharing: boolean): number[] {
+  setTrack(channelId: number, userId: number, kind: keyof Presence, on: boolean): number[] {
     // A track event can arrive before participant_joined; treat it as a join.
     const members = this.members(channelId);
-    const presence = members.get(userId);
-    if (presence?.screenSharing === screenSharing) return [];
-    members.set(userId, { screenSharing });
+    const presence = members.get(userId) ?? { screenSharing: false, camera: false };
+    if (members.has(userId) && presence[kind] === on) return [];
+    members.set(userId, { ...presence, [kind]: on });
     return [channelId];
   }
 
@@ -79,6 +80,7 @@ export class VoiceStateStore {
         muted: this.selfState.get(userId)?.muted ?? false,
         deafened: this.selfState.get(userId)?.deafened ?? false,
         screenSharing: presence.screenSharing,
+        camera: presence.camera,
         watching: (this.selfState.get(userId)?.watching ?? []).filter(
           (id) => id !== userId && sharing.has(id),
         ),

@@ -13,6 +13,7 @@ const keybindSchema = z.object({
 const settingsSchema = z.object({
   inputDeviceId: z.string().default('default'),
   outputDeviceId: z.string().default('default'),
+  videoDeviceId: z.string().default('default'),
   /** Percent; above 100 amplifies. */
   inputVolume: z.number().min(0).max(200).default(100),
   outputVolume: z.number().min(0).max(100).default(100),

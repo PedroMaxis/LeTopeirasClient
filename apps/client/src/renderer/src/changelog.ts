@@ -6,7 +6,7 @@
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
     version: '0.3.0',
-    items: ['Veja quem está assistindo cada transmissão.'],
+    items: ['Veja quem está assistindo cada transmissão.', 'Ligue a webcam nas salas de voz.'],
   },
   {
     version: '0.2.0',

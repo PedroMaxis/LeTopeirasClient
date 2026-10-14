@@ -154,6 +154,8 @@ export function VoiceStage({
   const muted = useStore(voice.store, (s) => s.muted);
   const deafened = useStore(voice.store, (s) => s.deafened);
   const sharing = useStore(voice.store, (s) => s.screenTrack !== null);
+  const cameraOn = useStore(voice.store, (s) => s.cameraTrack !== null);
+  const localCamera = useStore(voice.store, (s) => s.cameraTrack);
   const shareWatch = useStore(voice.store, (s) => s.shareWatch);
   const speaking = useStore(voice.store, (s) => s.speaking);
   const autoWatch = useStore(settings, (s) => s.autoWatchShares);
@@ -190,8 +192,17 @@ export function VoiceStage({
       },
     ];
   });
-  const focused = shares.find((s) => s.participant.identity === focusedId);
-  const gridCount = focused ? 0 : shares.length || participants.length;
+  /** The camera of a participant, if it is on and we receive it. */
+  const cameraOf = (p: Participant): VideoTrack | undefined =>
+    p === room?.localParticipant
+      ? (localCamera ?? undefined)
+      : p.getTrackPublication(Track.Source.Camera)?.videoTrack;
+  const focused = shares.find((s) => `s-${s.participant.identity}` === focusedId);
+  const focusedCamera = focused
+    ? undefined
+    : participants.find((p) => `c-${p.identity}` === focusedId && cameraOf(p));
+  const focusing = focused !== undefined || focusedCamera !== undefined;
+  const gridCount = focusing ? 0 : shares.length || participants.length;
   const tile = useTileSize(grid, gridCount);
   const body = useRef<HTMLDivElement>(null);
   useLayoutFlip(
@@ -200,7 +211,7 @@ export function VoiceStage({
     [
       focusedId ?? '',
       shares.map((s) => `${s.participant.identity}${s.watching ? '+' : ''}`).join(','),
-      participants.map((p) => p.identity).join(','),
+      participants.map((p) => p.identity + (cameraOf(p) ? 'c' : '')).join(','),
     ].join('|'),
   );
 
@@ -208,6 +219,7 @@ export function VoiceStage({
     const state = voiceState?.find((v) => String(v.userId) === p.identity);
     const isLocal = p === room?.localParticipant;
     const live = shares.some((s) => s.participant === p);
+    const camera = cameraOf(p);
     return (
       <ParticipantTile
         key={`p-${p.identity}`}
@@ -217,9 +229,17 @@ export function VoiceStage({
         muted={isLocal ? muted || deafened : (state?.muted ?? !p.isMicrophoneEnabled)}
         deafened={isLocal ? deafened : (state?.deafened ?? false)}
         live={live}
+        camera={camera}
+        isLocal={isLocal}
         speaking={speaking.has(p.identity)}
         style={strip ? undefined : tile}
-        onClick={live ? () => setFocusedId(p.identity) : undefined}
+        onClick={
+          live
+            ? () => setFocusedId(`s-${p.identity}`)
+            : camera
+              ? () => setFocusedId(`c-${p.identity}`)
+              : undefined
+        }
         onContextMenu={volumeMenu.open(Number(p.identity), nameOf(p))}
       />
     );
@@ -238,7 +258,7 @@ export function VoiceStage({
               : 'Conectando…'}
         </span>
         <div className="main-header-actions">
-          {focused && (
+          {focusing && (
             <button
               type="button"
               className="button secondary small"
@@ -265,6 +285,15 @@ export function VoiceStage({
             <div className="stage-focus">
               <ShareTile share={focused} large />
             </div>
+          ) : focusedCamera ? (
+            <div className="stage-focus">
+              <CameraFocus
+                participant={focusedCamera}
+                name={nameOf(focusedCamera)}
+                track={cameraOf(focusedCamera)}
+                isLocal={focusedCamera === room?.localParticipant}
+              />
+            </div>
           ) : (
             <div className="stage-grid" ref={setGrid}>
               {shares.length > 0
@@ -273,14 +302,14 @@ export function VoiceStage({
                       key={`s-${share.participant.identity}`}
                       share={share}
                       style={tile}
-                      onSelect={() => setFocusedId(share.participant.identity)}
+                      onSelect={() => setFocusedId(`s-${share.participant.identity}`)}
                     />
                   ))
                 : participants.map((p) => participantTile(p, false))}
             </div>
           )}
 
-          {(focused || shares.length > 0) && (
+          {(focusing || shares.length > 0) && (
             <div className="stage-strip">
               {shares
                 .filter((s) => s !== focused)
@@ -289,10 +318,12 @@ export function VoiceStage({
                     key={`s-${share.participant.identity}`}
                     share={share}
                     small
-                    onSelect={() => setFocusedId(share.participant.identity)}
+                    onSelect={() => setFocusedId(`s-${share.participant.identity}`)}
                   />
                 ))}
-              {participants.map((p) => participantTile(p, true))}
+              {participants
+                .filter((p) => p !== focusedCamera)
+                .map((p) => participantTile(p, true))}
             </div>
           )}
 
@@ -309,6 +340,13 @@ export function VoiceStage({
               label={deafened ? 'Voltar a ouvir' : 'Ensurdecer'}
               off={deafened}
               onClick={() => void voice.toggleDeafen()}
+            />
+            <StageButton
+              icon={cameraOn ? 'video' : 'videoOff'}
+              label={cameraOn ? 'Desligar câmera' : 'Ligar câmera'}
+              accent={cameraOn}
+              disabled={status !== 'connected'}
+              onClick={() => void voice.toggleCamera()}
             />
             <StageButton
               icon="screen"
@@ -374,6 +412,8 @@ function ParticipantTile(props: {
   muted: boolean;
   deafened: boolean;
   live: boolean;
+  camera: VideoTrack | undefined;
+  isLocal: boolean;
   speaking: boolean;
   style?: { width: number; height: number } | undefined;
   onClick?: (() => void) | undefined;
@@ -389,7 +429,11 @@ function ParticipantTile(props: {
       onContextMenu={props.onContextMenu}
       title={props.onClick ? 'Ver transmissão' : 'Clique direito: volume'}
     >
-      <Avatar user={props.user} size={props.style ? Math.min(96, props.style.height / 2) : 64} />
+      {props.camera ? (
+        <CameraView track={props.camera} mirror={props.isLocal} />
+      ) : (
+        <Avatar user={props.user} size={props.style ? Math.min(96, props.style.height / 2) : 64} />
+      )}
       <span className="stage-tile-label">
         <span className="overlay-chip">{props.name}</span>
         {props.deafened ? (
@@ -406,6 +450,50 @@ function ParticipantTile(props: {
       </span>
       {props.live && <span className="live-badge stage-tile-live">AO VIVO</span>}
     </button>
+  );
+}
+
+/** A webcam feed, attached to a <video> while mounted. Our own is mirrored, like a mirror. */
+function CameraView({ track, mirror }: { track: VideoTrack; mirror: boolean }) {
+  const video = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const el = video.current;
+    if (!el) return;
+    track.attach(el);
+    return () => {
+      track.detach(el);
+    };
+  }, [track]);
+  return <video ref={video} autoPlay playsInline muted className={mirror ? 'mirror' : undefined} />;
+}
+
+/** A participant's camera in the focus area; double click for fullscreen. */
+function CameraFocus({
+  participant,
+  name,
+  track,
+  isLocal,
+}: {
+  participant: Participant;
+  name: string;
+  track: VideoTrack | undefined;
+  isLocal: boolean;
+}) {
+  const container = useRef<HTMLDivElement>(null);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void container.current?.requestFullscreen();
+  };
+  return (
+    <div
+      className="camera-focus"
+      data-flip-id={`p-${participant.identity}`}
+      ref={container}
+      onDoubleClick={toggleFullscreen}
+    >
+      {track && <CameraView track={track} mirror={isLocal} />}
+      <span className="overlay-chip camera-focus-name">{name}</span>
+    </div>
   );
 }
 

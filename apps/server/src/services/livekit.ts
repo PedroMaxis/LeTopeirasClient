@@ -36,9 +36,10 @@ export async function createVoiceToken(
     canPublish: true,
     canSubscribe: true,
     canPublishData: false,
-    // No cameras in this app.
+    // Mic, camera and screen share (with its audio).
     canPublishSources: [
       TrackSource.MICROPHONE,
+      TrackSource.CAMERA,
       TrackSource.SCREEN_SHARE,
       TrackSource.SCREEN_SHARE_AUDIO,
     ],
@@ -111,18 +112,25 @@ export function applyWebhookEvent(
     case 'participant_connection_aborted':
       return { changed: store.leave(channelId, userId) };
     case 'track_published':
-    case 'track_unpublished':
-      if (event.track?.source !== TrackSource.SCREEN_SHARE) return { changed: [] };
+    case 'track_unpublished': {
+      const kind =
+        event.track?.source === TrackSource.SCREEN_SHARE
+          ? 'screenSharing'
+          : event.track?.source === TrackSource.CAMERA
+            ? 'camera'
+            : null;
+      if (!kind) return { changed: [] };
       return {
-        changed: store.setScreenSharing(channelId, userId, event.event === 'track_published'),
+        changed: store.setTrack(channelId, userId, kind, event.event === 'track_published'),
       };
+    }
     default:
       return { changed: [] };
   }
 }
 
-const isScreenSharing = (participant: ParticipantInfo) =>
-  participant.tracks.some((t) => t.source === TrackSource.SCREEN_SHARE);
+const hasSource = (participant: ParticipantInfo, source: TrackSource) =>
+  participant.tracks.some((t) => t.source === source);
 
 /**
  * Rebuilds the voice state from the LiveKit API, e.g. after a server restart where
@@ -135,17 +143,20 @@ export async function syncVoiceState(
   filter: VoiceFilter,
 ): Promise<number[]> {
   const client = new RoomServiceClient(config.apiUrl, config.apiKey, config.apiSecret);
-  const snapshot = new Map<number, Map<number, { screenSharing: boolean }>>();
+  const snapshot = new Map<number, Map<number, { screenSharing: boolean; camera: boolean }>>();
 
   for (const room of await client.listRooms()) {
     const channelId = parseVoiceRoomName(room.name);
     if (channelId === null || !filter.isVoiceChannel(channelId)) continue;
-    const members = new Map<number, { screenSharing: boolean }>();
+    const members = new Map<number, { screenSharing: boolean; camera: boolean }>();
     for (const participant of await client.listParticipants(room.name)) {
       const userId = parseUserId(participant.identity);
       if (userId === null || !filter.isKnownUser(userId)) continue;
       if (filter.canJoin(userId, channelId)) {
-        members.set(userId, { screenSharing: isScreenSharing(participant) });
+        members.set(userId, {
+          screenSharing: hasSource(participant, TrackSource.SCREEN_SHARE),
+          camera: hasSource(participant, TrackSource.CAMERA),
+        });
       } else {
         await client.removeParticipant(room.name, participant.identity);
       }

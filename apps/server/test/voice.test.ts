@@ -37,6 +37,13 @@ describe('POST /voice/token', () => {
     });
   });
 
+  it('lets members publish their camera', async () => {
+    const member = await t.register('maria');
+    const body = voiceTokenResponseSchema.parse((await requestToken(member.token, 2)).json());
+    const claims = await new TokenVerifier(apiKey, apiSecret).verify(body.token);
+    expect(claims.video?.canPublishSources).toContain('camera');
+  });
+
   it('expires within minutes, so a kept token stops working soon after losing access', async () => {
     const member = await t.register('maria');
     const body = voiceTokenResponseSchema.parse((await requestToken(member.token, 2)).json());
@@ -87,6 +94,27 @@ describe('POST /livekit/webhook', () => {
     track: { source },
   });
 
+  it('tracks cameras on and off', async () => {
+    const admin = await t.login('admin');
+    const ws = await connect(t.app, admin.token);
+    const identity = String(admin.user.id);
+    await signedWebhook(joined('voice:2', identity));
+    await ws.next('voice.state');
+    await signedWebhook(trackPublished('voice:2', identity, 'CAMERA'));
+    expect((await ws.next('voice.state')).data.participants[0]).toMatchObject({
+      camera: true,
+      screenSharing: false,
+    });
+    await signedWebhook({
+      event: 'track_unpublished',
+      room: { name: 'voice:2' },
+      participant: { identity },
+      track: { source: 'CAMERA' },
+    });
+    expect((await ws.next('voice.state')).data.participants[0]?.camera).toBe(false);
+    ws.close();
+  });
+
   it('shows who watches each share, ignoring ids that are not sharing in the room', async () => {
     const admin = await t.login('admin');
     const maria = await t.register('maria');
@@ -124,6 +152,7 @@ describe('POST /livekit/webhook', () => {
           muted: false,
           deafened: false,
           screenSharing: false,
+          camera: false,
           watching: [],
         },
       ],
