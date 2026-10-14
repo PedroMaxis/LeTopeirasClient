@@ -146,6 +146,7 @@ export class VoiceClient {
   private unsubscribePushToTalk: () => void;
   private unsubscribeVoiceAction: () => void;
   private unsubscribeTray: () => void;
+  private unsubscribeReport: () => void;
   private speakingTimer: ReturnType<typeof setInterval> | undefined;
   /** Last time each identity was above the speaking level. */
   private readonly lastLoud = new Map<string, number>();
@@ -202,7 +203,7 @@ export class VoiceClient {
     };
     syncTray();
     this.unsubscribeTray = this.store.subscribe(syncTray);
-    this.store.subscribe(() => this.report());
+    this.unsubscribeReport = this.store.subscribe(() => this.report());
   }
 
   /** Ids whose screen share we watch right now (what the others see as "assistindo"). */
@@ -213,7 +214,9 @@ export class VoiceClient {
     return [...room.remoteParticipants.values()]
       .filter((p) => p.getTrackPublication(Track.Source.ScreenShare))
       .filter((p) => isWatching(shareWatch, p.identity, false, autoWatch))
-      .map((p) => Number(p.identity));
+      .map((p) => Number(p.identity))
+      .sort((a, b) => a - b)
+      .slice(0, 50); // the voice.update schema rejects more
   }
 
   private lastReport = '';
@@ -441,6 +444,7 @@ export class VoiceClient {
     this.unsubscribePushToTalk();
     this.unsubscribeVoiceAction();
     this.unsubscribeTray();
+    this.unsubscribeReport();
     void window.api.setKeybinds([]);
     void window.api.setTrayVoiceState({ inVoice: false, muted: false, deafened: false });
     void this.leave();
