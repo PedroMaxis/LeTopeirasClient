@@ -20,6 +20,10 @@ export const LIMITS = {
   replySnippetMax: 200,
   searchPageDefault: 25,
   searchPageMax: 50,
+  /** Images per message, and the size of each before compression. */
+  attachmentsPerMessage: 4,
+  attachmentMaxBytes: 10 * 1024 * 1024,
+  avatarMaxBytes: 25 * 1024 * 1024,
 } as const;
 
 // One emoji: pictographs plus the joiners, variation selectors, skin tones and keycaps that

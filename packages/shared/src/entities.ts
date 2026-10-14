@@ -75,6 +75,16 @@ export const embedSchema = z.object({
 });
 export type Embed = z.infer<typeof embedSchema>;
 
+/** An image sent with a message, stored by the server as WebP. */
+export const attachmentSchema = z.object({
+  id: idSchema,
+  /** Path on our server (`/files/<hash>.webp`); the client prefixes the server URL. */
+  url: z.string(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+});
+export type Attachment = z.infer<typeof attachmentSchema>;
+
 export const messageSchema = z.object({
   id: idSchema,
   channelId: idSchema,
