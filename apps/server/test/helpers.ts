@@ -83,9 +83,12 @@ export async function createTestApp(options: { fetchPreview?: PreviewFetcher } =
   };
 
   const close = async () => {
-    await app.close();
-    db.close();
-    rmSync(uploadsDir, { recursive: true, force: true });
+    try {
+      await app.close();
+      db.close();
+    } finally {
+      rmSync(uploadsDir, { recursive: true, force: true });
+    }
   };
 
   return { app, db, admin, login, register, close, uploadsDir };
