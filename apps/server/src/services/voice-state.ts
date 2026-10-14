@@ -11,7 +11,10 @@ interface Presence {
  */
 export class VoiceStateStore {
   private readonly channels = new Map<number, Map<number, Presence>>();
-  private readonly selfState = new Map<number, { muted: boolean; deafened: boolean }>();
+  private readonly selfState = new Map<
+    number,
+    { muted: boolean; deafened: boolean; watching: number[] }
+  >();
 
   join(channelId: number, userId: number): number[] {
     const members = this.members(channelId);
@@ -40,10 +43,20 @@ export class VoiceStateStore {
     return this.channels.delete(channelId) ? [channelId] : [];
   }
 
-  setSelfState(userId: number, muted: boolean, deafened: boolean): number[] {
+  setSelfState(
+    userId: number,
+    muted: boolean,
+    deafened: boolean,
+    watching: number[] = [],
+  ): number[] {
     const prev = this.selfState.get(userId);
-    if (prev?.muted === muted && prev.deafened === deafened) return [];
-    this.selfState.set(userId, { muted, deafened });
+    if (
+      prev?.muted === muted &&
+      prev.deafened === deafened &&
+      prev.watching.join() === watching.join()
+    )
+      return [];
+    this.selfState.set(userId, { muted, deafened, watching });
     return [...this.channels].filter(([, m]) => m.has(userId)).map(([id]) => id);
   }
 
@@ -58,6 +71,7 @@ export class VoiceStateStore {
 
   get(channelId: number): VoiceChannelState {
     const members = this.channels.get(channelId) ?? new Map<number, Presence>();
+    const sharing = new Set([...members].filter(([, p]) => p.screenSharing).map(([id]) => id));
     return {
       channelId,
       participants: [...members].map(([userId, presence]) => ({
@@ -65,6 +79,9 @@ export class VoiceStateStore {
         muted: this.selfState.get(userId)?.muted ?? false,
         deafened: this.selfState.get(userId)?.deafened ?? false,
         screenSharing: presence.screenSharing,
+        watching: (this.selfState.get(userId)?.watching ?? []).filter(
+          (id) => id !== userId && sharing.has(id),
+        ),
       })),
     };
   }

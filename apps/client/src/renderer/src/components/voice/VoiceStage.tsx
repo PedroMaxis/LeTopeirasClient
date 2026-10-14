@@ -33,6 +33,8 @@ interface Share {
   name: string;
   user: User | undefined;
   watching: boolean;
+  /** People currently watching this share. */
+  viewers: User[];
 }
 
 gsap.registerPlugin(Flip);
@@ -182,6 +184,9 @@ export function VoiceStage({
         name: nameOf(participant),
         user: userOf(participant),
         watching: isWatching(shareWatch, participant.identity, isLocal, autoWatch),
+        viewers: (voiceState ?? [])
+          .filter((v) => v.watching.includes(Number(participant.identity)))
+          .flatMap((v) => users[v.userId] ?? []),
       },
     ];
   });
@@ -404,6 +409,24 @@ function ParticipantTile(props: {
   );
 }
 
+/** Eye + count + up to 3 faces; hover lists everyone watching. */
+function ShareViewers({ viewers }: { viewers: User[] }) {
+  if (viewers.length === 0) return null;
+  const names = viewers.map((v) => v.displayName).join(', ');
+  return (
+    <span className="overlay-chip share-viewers" title={`Assistindo: ${names}`}>
+      <Icon name="eye" size={14} />
+      {viewers.length}
+      <span className="share-viewer-faces">
+        {viewers.slice(0, 3).map((v) => (
+          <Avatar key={v.id} user={v} size={18} />
+        ))}
+        {viewers.length > 3 && <span className="share-viewer-more">+{viewers.length - 3}</span>}
+      </span>
+    </span>
+  );
+}
+
 /**
  * One screen share. `large`: the focused one; `small`: in the strip (name and badge only);
  * otherwise a grid tile. Not watching shows "Assistir" instead of the video.
@@ -519,6 +542,7 @@ function ShareTile({
       <div className="featured-top">
         <span className={`live-badge ${small ? 'small' : ''}`}>AO VIVO</span>
         {!small && info && <span className="overlay-chip">{info}</span>}
+        {!small && <ShareViewers viewers={share.viewers} />}
       </div>
       <div className="featured-name overlay-chip">
         <Icon name="screen" size={14} />

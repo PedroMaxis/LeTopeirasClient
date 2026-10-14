@@ -408,7 +408,14 @@ export class Gateway {
       }
 
       case 'voice.update':
-        this.broadcastVoice(voice.setSelfState(user.id, event.data.muted, event.data.deafened));
+        this.broadcastVoice(
+          voice.setSelfState(
+            user.id,
+            event.data.muted,
+            event.data.deafened,
+            event.data.watching ?? [],
+          ),
+        );
         return;
     }
   }

@@ -2276,6 +2276,31 @@ a:hover {
   border-radius: 4px;
 }
 
+.share-viewers {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.share-viewer-faces {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.share-viewer-faces > * + * {
+  margin-left: -6px;
+}
+
+.share-viewer-faces .avatar {
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 0.6);
+}
+
+.share-viewer-more {
+  padding-left: 10px;
+  font-size: 11px;
+}
+
 .overlay-icon {
   display: flex;
   color: #fff;

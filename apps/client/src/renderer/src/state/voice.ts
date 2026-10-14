@@ -168,7 +168,7 @@ export class VoiceClient {
 
   constructor(
     private readonly api: Api,
-    private readonly reportState: (muted: boolean, deafened: boolean) => void,
+    private readonly reportState: (muted: boolean, deafened: boolean, watching: number[]) => void,
   ) {
     this.audioContainer.hidden = true;
     document.body.appendChild(this.audioContainer);
@@ -202,6 +202,39 @@ export class VoiceClient {
     };
     syncTray();
     this.unsubscribeTray = this.store.subscribe(syncTray);
+    this.store.subscribe(() => this.report());
+  }
+
+  /** Ids whose screen share we watch right now (what the others see as "assistindo"). */
+  private watchingIds(): number[] {
+    const { room, shareWatch } = this.state;
+    if (!room) return [];
+    const autoWatch = settings.get().autoWatchShares;
+    return [...room.remoteParticipants.values()]
+      .filter((p) => p.getTrackPublication(Track.Source.ScreenShare))
+      .filter((p) => isWatching(shareWatch, p.identity, false, autoWatch))
+      .map((p) => Number(p.identity));
+  }
+
+  private lastReport = '';
+  /** Sends mute/deafen/watching when any of them changed. */
+  private report(): void {
+    if (!this.state.room) {
+      this.lastReport = '';
+      return;
+    }
+    const { muted, deafened } = this.state;
+    const watching = this.watchingIds();
+    const key = JSON.stringify([muted, deafened, watching]);
+    if (key === this.lastReport) return;
+    this.lastReport = key;
+    this.reportState(muted, deafened, watching);
+  }
+
+  /** Sends the state again even if unchanged (the server may have forgotten it). */
+  forceReport(): void {
+    this.lastReport = '';
+    this.report();
   }
 
   get state(): VoiceState {
@@ -247,7 +280,7 @@ export class VoiceClient {
     await this.syncMicrophone();
     await this.syncPushToTalk(settings.get());
     this.applyOutput();
-    this.reportState(this.state.muted, this.state.deafened);
+    this.report();
     this.pingTimer = setInterval(() => {
       const rtt = room.engine.client.rtt;
       this.store.set({ pingMs: rtt > 0 ? Math.round(rtt) : null });
@@ -534,7 +567,7 @@ export class VoiceClient {
     void this.syncMutedMeter(settings.get());
     this.applyOutput();
     await this.syncMicrophone();
-    if (this.state.room) this.reportState(this.state.muted, this.state.deafened);
+    this.report();
   }
 
   /** Mic is on unless muted or deafened; applies the input gain processor. */
@@ -756,6 +789,7 @@ export class VoiceClient {
   private async applySettings(prev: Settings, next: Settings): Promise<void> {
     const { room } = this.state;
     if (!room) return;
+    if (prev.autoWatchShares !== next.autoWatchShares) this.report();
     if (
       prev.outputVolume !== next.outputVolume ||
       prev.userVolumes !== next.userVolumes ||

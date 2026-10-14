@@ -222,8 +222,8 @@ export class ChatClient {
     this.gateway.send({ type: 'presence.update', data: { status } });
   }
 
-  reportVoiceState(muted: boolean, deafened: boolean): void {
-    this.gateway.send({ type: 'voice.update', data: { muted, deafened } });
+  reportVoiceState(muted: boolean, deafened: boolean, watching: number[]): void {
+    this.gateway.send({ type: 'voice.update', data: { muted, deafened, watching } });
   }
 
   // -------------------------------------------------------------------------

@@ -5,6 +5,10 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.3.0',
+    items: ['Veja quem está assistindo cada transmissão.'],
+  },
+  {
     version: '0.2.0',
     items: [
       '**Reações**: passe o mouse numa mensagem e clique no rostinho com +; clique numa reação para somar a sua.',
