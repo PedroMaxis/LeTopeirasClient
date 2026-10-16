@@ -33,11 +33,16 @@ export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions 
   const app = Fastify({ bodyLimit: 64 * 1024, ...fastifyOptions });
 
   const voice = new VoiceStateStore();
+  const files = new FileStore(config.uploadsDir);
   const gateway: Gateway = new Gateway({
     db,
     voice,
     log: app.log,
     onMessageSaved: (message) => embeds.schedule(message),
+    onFilesReleased: (hashes) =>
+      void files
+        .collect(db, hashes)
+        .catch((err: unknown) => app.log.error({ err }, 'Could not remove an image file')),
   });
   const embeds = new EmbedService({
     db,
@@ -49,7 +54,6 @@ export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions 
         gateway.broadcastToChannel(channel, { type: 'message.updated', data: { message } });
     },
   });
-  const files = new FileStore(config.uploadsDir);
   // Hourly cleanup of uploads never sent and files nobody uses, plus once at startup.
   const sweep = () =>
     void files.sweep(db).catch((err: unknown) => app.log.error({ err }, 'Upload sweep failed'));

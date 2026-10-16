@@ -54,6 +54,8 @@ export interface GatewayDeps {
   log: FastifyBaseLogger;
   /** A message was sent or edited (link previews get fetched). */
   onMessageSaved?: (message: Message) => void;
+  /** Files of deleted messages: the caller removes the ones nothing uses anymore. */
+  onFilesReleased?: (hashes: string[]) => void;
 }
 
 /**
@@ -298,7 +300,8 @@ export class Gateway {
   private onMessage(conn: Connection, raw: string, isBinary: boolean): void {
     const event = isBinary ? undefined : parseEvent(raw);
     if (!event) {
-      this.sendError(conn, new AppError(400, 'invalid_message', 'Mensagem inválida'));
+      // Name the event type when there is one, so the client can match the failure.
+      this.sendError(conn, new AppError(400, 'invalid_message', 'Mensagem inválida'), typeOf(raw));
       return;
     }
     try {
@@ -334,8 +337,15 @@ export class Gateway {
         throw new AppError(400, 'already_authenticated', 'Já autenticado');
 
       case 'message.send': {
-        const { channelId, content, nonce, replyToId, replyPing } = event.data;
-        const message = sendMessage(db, user, channelId, content, { replyToId, replyPing });
+        const { channelId, content, nonce, replyToId, replyPing, attachmentIds } = event.data;
+        const message = sendMessage(
+          db,
+          user,
+          channelId,
+          content,
+          { replyToId, replyPing },
+          attachmentIds,
+        );
         this.broadcastToChannel(requireTextChannel(db, user, channelId), {
           type: 'message.created',
           data: nonce === undefined ? { message } : { message, nonce },
@@ -355,11 +365,12 @@ export class Gateway {
       }
 
       case 'message.delete': {
-        const message = removeMessage(db, user, event.data.messageId);
+        const { message, hashes } = removeMessage(db, user, event.data.messageId);
         this.broadcastToChannel(requireTextChannel(db, user, message.channelId), {
           type: 'message.deleted',
           data: { channelId: message.channelId, messageId: message.id },
         });
+        if (hashes.length) this.deps.onFilesReleased?.(hashes);
         return;
       }
 
@@ -453,4 +464,14 @@ function parseEvent(raw: string): ClientEvent | undefined {
 
 function sendFrame(conn: Connection, frame: string): void {
   if (conn.socket.readyState === conn.socket.OPEN) conn.socket.send(frame);
+}
+
+/** The `type` of a frame that failed validation, if it has one. */
+function typeOf(raw: string): string | undefined {
+  try {
+    const type = (JSON.parse(raw) as { type?: unknown } | null)?.type;
+    return typeof type === 'string' ? type : undefined;
+  } catch {
+    return undefined;
+  }
 }

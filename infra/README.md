@@ -112,6 +112,14 @@ The backups live on the same instance. Every now and then, copy one to your PC:
 scp -i keys/<key> 'ubuntu@<ip>:letopeiras-backups/letopeiras-*.db.gz' .
 ```
 
+The same run also mirrors the uploaded images into `~/letopeiras-backups/uploads/`. They never change once written, so the mirror only adds new files and keeps the ones the server has since deleted. To restore them, copy that folder back into the volume and give it back to the server user:
+
+```sh
+cd ~/letopeiras/infra
+docker compose cp ~/letopeiras-backups/uploads server:/data/
+docker compose exec -u root server chown -R node:node /data/uploads
+```
+
 Restoring a backup:
 
 ```sh

@@ -22,6 +22,7 @@ import {
   removeReaction,
   updateMessageContent,
 } from '../repo/messages';
+import { claimAttachments, attachmentHashes } from '../repo/attachments';
 import { markRead } from '../repo/read-state';
 import { findUserByUsername } from '../repo/users';
 import { canAccess, requireAccess } from './access';
@@ -49,8 +50,12 @@ export function sendMessage(
   channelId: number,
   content: string,
   reply: { replyToId?: number | undefined; replyPing?: boolean | undefined } = {},
+  attachmentIds: number[] = [],
 ): Message {
   const channel = requireTextChannel(db, author, channelId);
+  if (!content && attachmentIds.length === 0) {
+    throw badRequest('A mensagem está vazia', 'empty_message');
+  }
   const mentionIds = resolveMentions(db, author, channel, content);
   if (reply.replyToId !== undefined) {
     const original = findMessage(db, reply.replyToId);
@@ -63,7 +68,7 @@ export function sendMessage(
     }
   }
   return db.transaction(() => {
-    const message = createMessage(db, {
+    const sent = createMessage(db, {
       channelId,
       authorId: author.id,
       content,
@@ -71,6 +76,14 @@ export function sendMessage(
       mentionsEveryone: mentionsEveryone(content),
       replyToId: reply.replyToId,
     });
+    // Throwing rolls the insert back too, so a message never goes out without its images.
+    if (attachmentIds.length && !claimAttachments(db, sent.id, author.id, attachmentIds)) {
+      throw badRequest(
+        'Uma das imagens não está mais disponível, envie de novo',
+        'attachment_not_found',
+      );
+    }
+    const message = expectRow(findMessage(db, sent.id));
     // Your own message never counts as unread.
     markRead(db, author.id, channelId, message.id);
     return message;
@@ -99,14 +112,19 @@ export function editMessage(db: Db, user: User, messageId: number, content: stri
   );
 }
 
-/** The author or an admin can delete a message. Returns the deleted message. */
-export function removeMessage(db: Db, user: User, messageId: number): Message {
+/** The author or an admin can delete a message. Returns it and the hashes of the files it used. */
+export function removeMessage(
+  db: Db,
+  user: User,
+  messageId: number,
+): { message: Message; hashes: string[] } {
   const message = requireMessage(db, user, messageId);
   if (message.authorId !== user.id && !user.isAdmin) {
     throw forbidden('Você só pode apagar suas próprias mensagens');
   }
+  const hashes = attachmentHashes(db, messageId);
   deleteMessage(db, messageId);
-  return message;
+  return { message, hashes };
 }
 
 /**

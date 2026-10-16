@@ -10,7 +10,9 @@ import { FileStore } from '../src/services/files';
 import { toAvatar, toChatImage } from '../src/services/images';
 
 const png = (width: number, height: number) =>
-  sharp({ create: { width, height, channels: 3, background: '#c0392b' } }).png().toBuffer();
+  sharp({ create: { width, height, channels: 3, background: '#c0392b' } })
+    .png()
+    .toBuffer();
 
 describe('toChatImage', () => {
   it('converts to WebP and caps the longest side at 1920 px', async () => {
@@ -27,7 +29,9 @@ describe('toChatImage', () => {
 
   it('keeps GIFs animated', async () => {
     const frame = (color: string) =>
-      sharp({ create: { width: 40, height: 40, channels: 3, background: color } }).png().toBuffer();
+      sharp({ create: { width: 40, height: 40, channels: 3, background: color } })
+        .png()
+        .toBuffer();
     const gif = await sharp([await frame('#f00'), await frame('#00f')], {
       join: { animated: true },
     })

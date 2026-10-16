@@ -1,6 +1,14 @@
-import { embedSchema, LIMITS, type Embed, type Message, type Reaction } from '@letopeiras/shared';
+import {
+  embedSchema,
+  LIMITS,
+  type Attachment,
+  type Embed,
+  type Message,
+  type Reaction,
+} from '@letopeiras/shared';
 import { z } from 'zod';
 import { expectRow, type Db } from '../db';
+import { attachmentsOf } from './attachments';
 
 interface MessageRow {
   id: number;
@@ -38,7 +46,11 @@ export function setMessageEmbeds(db: Db, id: number, embeds: Embed[]): boolean {
   );
 }
 
-const toMessage = (row: MessageRow, reactions: Reaction[] = []): Message => ({
+const toMessage = (
+  row: MessageRow,
+  reactions: Reaction[] = [],
+  attachments: Attachment[] = [],
+): Message => ({
   id: row.id,
   channelId: row.channel_id,
   authorId: row.author_id,
@@ -54,6 +66,7 @@ const toMessage = (row: MessageRow, reactions: Reaction[] = []): Message => ({
       : null,
   reactions,
   embeds: parseEmbeds(row.embeds),
+  attachments,
 });
 
 // The replied-to message comes along as a snippet (null once it's deleted).
@@ -97,11 +110,13 @@ export function searchMessages(
     );
   const hasMore = rows.length > options.limit;
   const page = rows.slice(0, options.limit);
-  const reactions = reactionsOf(
-    db,
-    page.map((r) => r.id),
-  );
-  return { messages: page.map((r) => toMessage(r, reactions.get(r.id))), hasMore };
+  const ids = page.map((r) => r.id);
+  const reactions = reactionsOf(db, ids);
+  const attachments = attachmentsOf(db, ids);
+  return {
+    messages: page.map((r) => toMessage(r, reactions.get(r.id), attachments.get(r.id))),
+    hasMore,
+  };
 }
 
 /** Reactions of these messages: emojis by first use, users in the order they reacted. */
@@ -209,7 +224,7 @@ export function createMessage(
 
 export function findMessage(db: Db, id: number): Message | undefined {
   const row = db.prepare<[number], MessageRow>(`${SELECT_MESSAGE} WHERE m.id = ?`).get(id);
-  return row && toMessage(row, listReactions(db, id));
+  return row && toMessage(row, listReactions(db, id), attachmentsOf(db, [id]).get(id));
 }
 
 export function updateMessageContent(
@@ -249,11 +264,13 @@ export function listMessages(
     .all(channelId, options.before ?? Number.MAX_SAFE_INTEGER, options.limit + 1);
   const hasMore = rows.length > options.limit;
   const page = rows.slice(0, options.limit).reverse();
-  const reactions = reactionsOf(
-    db,
-    page.map((r) => r.id),
-  );
-  return { messages: page.map((r) => toMessage(r, reactions.get(r.id))), hasMore };
+  const ids = page.map((r) => r.id);
+  const reactions = reactionsOf(db, ids);
+  const attachments = attachmentsOf(db, ids);
+  return {
+    messages: page.map((r) => toMessage(r, reactions.get(r.id), attachments.get(r.id))),
+    hasMore,
+  };
 }
 
 /** Unread messages mentioning `userId` (by name or @todos, written by someone else), per channel. */

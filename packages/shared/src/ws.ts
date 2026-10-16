@@ -15,6 +15,8 @@ import {
 } from './entities';
 
 const messageContentSchema = z.string().trim().min(1).max(LIMITS.messageMax);
+// Sending may have no text when images are attached (checked by the server).
+const sentContentSchema = z.string().trim().max(LIMITS.messageMax);
 
 // ---------------------------------------------------------------------------
 // Client → server
@@ -26,13 +28,15 @@ export const clientEventSchema = z.discriminatedUnion('type', [
     type: z.literal('message.send'),
     data: z.object({
       channelId: idSchema,
-      content: messageContentSchema,
+      content: sentContentSchema,
       /** Echoed back in message.created so the sender can match its optimistic copy. */
       nonce: z.string().max(64).optional(),
       /** Answering a message of the same channel. */
       replyToId: idSchema.optional(),
       /** Whether the reply mentions the original author (default true, like Discord). */
       replyPing: z.boolean().optional(),
+      /** Uploads (POST /uploads) to send with it, in order. */
+      attachmentIds: z.array(idSchema).max(LIMITS.attachmentsPerMessage).optional(),
     }),
   }),
   z.object({

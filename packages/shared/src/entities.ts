@@ -105,6 +105,8 @@ export const messageSchema = z.object({
   reactions: z.array(reactionSchema).default([]),
   /** Link previews; filled in shortly after sending (a `message.updated` follows). */
   embeds: z.array(embedSchema).default([]),
+  /** Images sent with the message (it may have no text then). */
+  attachments: z.array(attachmentSchema).default([]),
 });
 export type Message = z.infer<typeof messageSchema>;
 

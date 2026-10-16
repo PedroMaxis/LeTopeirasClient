@@ -276,13 +276,15 @@ describe('protocol validation', () => {
     for (const frame of [
       'not json',
       { type: 'nope', data: {} },
-      { type: 'message.send', data: { channelId: 1, content: '   ' } },
       { type: 'message.send', data: { channelId: 1, content: 'x'.repeat(2001) } },
       { type: 'message.send', data: { channelId: -1, content: 'oi' } },
     ]) {
       ws.send(frame);
       expect((await ws.next('error')).data.code).toBe('invalid_message');
     }
+    // Blank text is a valid frame (images may go without it); the service refuses it.
+    ws.send({ type: 'message.send', data: { channelId: 1, content: '   ' } });
+    expect((await ws.next('error')).data.code).toBe('empty_message');
     ws.send({ type: 'typing.start', data: { channelId: 1 } });
     expect(await ws.receives('error')).toBe(false);
   });
