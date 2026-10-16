@@ -125,6 +125,24 @@ describe('FileStore', () => {
     expect(existsSync(store.pathOf(a))).toBe(true);
   });
 
+  it('saves the same new content concurrently without clashing', async () => {
+    const { store } = setup();
+    const hashes = await Promise.all(Array.from({ length: 8 }, () => store.save(Buffer.from('x'))));
+    expect(new Set(hashes).size).toBe(1);
+    expect(existsSync(store.pathOf(hashes[0] ?? ''))).toBe(true);
+  });
+
+  it('saving existing content refreshes it, so the sweep keeps it', async () => {
+    const { db, store } = setup();
+    const hash = await store.save(Buffer.from('again'));
+    const old = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
+    utimesSync(store.pathOf(hash), old, old);
+    await store.save(Buffer.from('again'));
+    // Not referenced yet (the attachment row comes right after), but just saved again.
+    await store.sweep(db);
+    expect(existsSync(store.pathOf(hash))).toBe(true);
+  });
+
   it('collect keeps referenced files and deletes the rest', async () => {
     const { db, user, store } = setup();
     const used = await store.save(Buffer.from('used'));

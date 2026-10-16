@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
-import { mkdir, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
+import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readdir, rename, stat, unlink, utimes, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Db } from '../db';
 import { deleteStaleAttachments, isHashReferenced } from '../repo/attachments';
@@ -29,15 +29,27 @@ export class FileStore {
     const hash = createHash('sha256').update(data).digest('hex');
     const path = this.pathOf(hash);
     try {
-      await stat(path);
+      // Already stored: touch it, so the sweep (which only removes files older than the TTL)
+      // can't take it before the caller's row references it.
+      const now = new Date();
+      await utimes(path, now, now);
       return hash;
     } catch {
       // New file: write to a temp name and rename, so a reader never sees half a file.
     }
     await mkdir(join(this.dir, hash.slice(0, 2)), { recursive: true });
-    const tmp = `${path}.${process.pid}.${Date.now()}.tmp`;
-    await writeFile(tmp, data);
-    await rename(tmp, path);
+    // Unique per call: two uploads of the same image at once must not share a temp file.
+    const tmp = `${path}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(tmp, data);
+      await rename(tmp, path);
+    } catch (err) {
+      await unlink(tmp).catch(() => undefined);
+      // Another save of the same content got there first (Windows refuses the rename then);
+      // the name is the content's hash, so its file is ours too.
+      const stored = await stat(path).catch(() => null);
+      if (!stored) throw err;
+    }
     return hash;
   }
 
