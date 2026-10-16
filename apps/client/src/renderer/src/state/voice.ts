@@ -1,5 +1,6 @@
 import {
   ConnectionState,
+  createLocalVideoTrack,
   DisconnectReason,
   LocalAudioTrack,
   Room,
@@ -20,6 +21,8 @@ import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
   applyShareMode,
   audioCaptureOptions,
+  cameraCaptureOptions,
+  cameraPublishOptions,
   roomOptions,
   screenAudioPublishOptions,
   screenCaptureOptions,
@@ -43,6 +46,8 @@ export interface VoiceState {
   muted: boolean;
   deafened: boolean;
   screenTrack: LocalVideoTrack | null;
+  /** Our webcam, while it is on. */
+  cameraTrack: LocalVideoTrack | null;
   shareMode: ShareMode;
   shareQuality: ShareQuality;
   /** Whether to send PC audio with the next screen share (picker toggle). */
@@ -122,6 +127,7 @@ export class VoiceClient {
     muted: false,
     deafened: false,
     screenTrack: null,
+    cameraTrack: null,
     shareMode: settings.get().defaultShareMode,
     shareQuality: settings.get().defaultShareQuality,
     shareAudio: true,
@@ -140,12 +146,15 @@ export class VoiceClient {
   private readonly audioSources = new Map<string, { identity: string; screen: boolean }>();
   private systemAudio: { capture: SystemAudio; track: LocalTrack } | null = null;
   private micProcessor: MicProcessor | null = null;
+  /** A camera is being opened: a second toggle meanwhile must not open another one. */
+  private cameraBusy = false;
   private audioContext: AudioContext | null = null;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
   private unsubscribeSettings: () => void;
   private unsubscribePushToTalk: () => void;
   private unsubscribeVoiceAction: () => void;
   private unsubscribeTray: () => void;
+  private unsubscribeReport: () => void;
   private speakingTimer: ReturnType<typeof setInterval> | undefined;
   /** Last time each identity was above the speaking level. */
   private readonly lastLoud = new Map<string, number>();
@@ -168,7 +177,7 @@ export class VoiceClient {
 
   constructor(
     private readonly api: Api,
-    private readonly reportState: (muted: boolean, deafened: boolean) => void,
+    private readonly reportState: (muted: boolean, deafened: boolean, watching: number[]) => void,
   ) {
     this.audioContainer.hidden = true;
     document.body.appendChild(this.audioContainer);
@@ -202,6 +211,41 @@ export class VoiceClient {
     };
     syncTray();
     this.unsubscribeTray = this.store.subscribe(syncTray);
+    this.unsubscribeReport = this.store.subscribe(() => this.report());
+  }
+
+  /** Ids whose screen share we watch right now (what the others see as "assistindo"). */
+  private watchingIds(): number[] {
+    const { room, shareWatch } = this.state;
+    if (!room) return [];
+    const autoWatch = settings.get().autoWatchShares;
+    return [...room.remoteParticipants.values()]
+      .filter((p) => p.getTrackPublication(Track.Source.ScreenShare))
+      .filter((p) => isWatching(shareWatch, p.identity, false, autoWatch))
+      .map((p) => Number(p.identity))
+      .sort((a, b) => a - b)
+      .slice(0, 50); // the voice.update schema rejects more
+  }
+
+  private lastReport = '';
+  /** Sends mute/deafen/watching when any of them changed. */
+  private report(): void {
+    if (!this.state.room) {
+      this.lastReport = '';
+      return;
+    }
+    const { muted, deafened } = this.state;
+    const watching = this.watchingIds();
+    const key = JSON.stringify([muted, deafened, watching]);
+    if (key === this.lastReport) return;
+    this.lastReport = key;
+    this.reportState(muted, deafened, watching);
+  }
+
+  /** Sends the state again even if unchanged (the server may have forgotten it). */
+  forceReport(): void {
+    this.lastReport = '';
+    this.report();
   }
 
   get state(): VoiceState {
@@ -247,7 +291,7 @@ export class VoiceClient {
     await this.syncMicrophone();
     await this.syncPushToTalk(settings.get());
     this.applyOutput();
-    this.reportState(this.state.muted, this.state.deafened);
+    this.report();
     this.pingTimer = setInterval(() => {
       const rtt = room.engine.client.rtt;
       this.store.set({ pingMs: rtt > 0 ? Math.round(rtt) : null });
@@ -335,6 +379,42 @@ export class VoiceClient {
     await room?.localParticipant.unpublishTrack(screenTrack, true);
   }
 
+  /** Turns our webcam on or off. The camera can also end outside the app (unplugged). */
+  async toggleCamera(): Promise<void> {
+    const { room, cameraTrack } = this.state;
+    if (!room) return;
+    if (cameraTrack) {
+      this.store.set({ cameraTrack: null });
+      logEvent('camera.stop');
+      await room.localParticipant.unpublishTrack(cameraTrack, true);
+      return;
+    }
+    if (this.cameraBusy) return;
+    this.cameraBusy = true;
+    let track: LocalVideoTrack | undefined;
+    try {
+      track = await createLocalVideoTrack(cameraCaptureOptions(settings.get()));
+      const opened = track;
+      opened.once(TrackEvent.Ended, () => {
+        if (this.state.cameraTrack === opened) void this.toggleCamera();
+      });
+      await room.localParticipant.publishTrack(opened, cameraPublishOptions);
+      if (this.state.room !== room) {
+        opened.stop();
+        return;
+      }
+      this.store.set({ cameraTrack: opened });
+      logEvent('camera.start', { codec: cameraPublishOptions.videoCodec, simulcast: true });
+    } catch (err) {
+      // Stopping it also turns the camera light off when publishing failed.
+      track?.stop();
+      logEvent('camera.error', { error: errorMessage(err) });
+      showToast(`Não foi possível ligar a câmera: ${errorMessage(err)}`);
+    } finally {
+      this.cameraBusy = false;
+    }
+  }
+
   /** Someone's screen share audio volume for us, 0–200 %. Saved per user. */
   setShareVolume(userId: number, volume: number): void {
     updateSettings({ shareVolumes: { ...settings.get().shareVolumes, [userId]: volume } });
@@ -408,6 +488,7 @@ export class VoiceClient {
     this.unsubscribePushToTalk();
     this.unsubscribeVoiceAction();
     this.unsubscribeTray();
+    this.unsubscribeReport();
     void window.api.setKeybinds([]);
     void window.api.setTrayVoiceState({ inVoice: false, muted: false, deafened: false });
     void this.leave();
@@ -521,6 +602,7 @@ export class VoiceClient {
       status: 'idle',
       room: null,
       screenTrack: null,
+      cameraTrack: null,
       sharingAudio: false,
       shareWatch: new Map(),
       speaking: new Set(),
@@ -534,7 +616,7 @@ export class VoiceClient {
     void this.syncMutedMeter(settings.get());
     this.applyOutput();
     await this.syncMicrophone();
-    if (this.state.room) this.reportState(this.state.muted, this.state.deafened);
+    this.report();
   }
 
   /** Mic is on unless muted or deafened; applies the input gain processor. */
@@ -756,6 +838,7 @@ export class VoiceClient {
   private async applySettings(prev: Settings, next: Settings): Promise<void> {
     const { room } = this.state;
     if (!room) return;
+    if (prev.autoWatchShares !== next.autoWatchShares) this.report();
     if (
       prev.outputVolume !== next.outputVolume ||
       prev.userVolumes !== next.userVolumes ||
@@ -784,6 +867,10 @@ export class VoiceClient {
     }
     if (prev.outputDeviceId !== next.outputDeviceId) {
       await this.mixer.setSinkId(next.outputDeviceId);
+    }
+    const { cameraTrack } = this.state;
+    if (cameraTrack && prev.videoDeviceId !== next.videoDeviceId) {
+      await cameraTrack.restartTrack(cameraCaptureOptions(next));
     }
     const captureChanged =
       prev.inputDeviceId !== next.inputDeviceId ||

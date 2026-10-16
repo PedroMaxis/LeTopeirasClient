@@ -1,8 +1,8 @@
 import type { MediaAccessPermissionRequest, Session } from 'electron';
 import { isTrustedUrl } from './renderer';
 
-// Microphone, screen capture (via our own picker), fullscreen video, output device selection
-// copying invite codes and message notifications.
+// Microphone, camera, screen capture (via our own picker), fullscreen video, output device
+// selection, copying invite codes and message notifications.
 const allowedPermissions = new Set<string>([
   'media',
   'display-capture',
@@ -18,9 +18,9 @@ export function configurePermissions(ses: Session): void {
       return callback(false);
     }
     if (permission === 'media') {
-      // Only the microphone; there is no camera support.
+      // Microphone and camera.
       const { mediaTypes = [] } = details as MediaAccessPermissionRequest;
-      return callback(mediaTypes.every((type) => type === 'audio'));
+      return callback(mediaTypes.every((type) => type === 'audio' || type === 'video'));
     }
     callback(true);
   });

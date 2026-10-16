@@ -18,6 +18,7 @@ export function VoicePanel({ actions }: { actions: LayoutActions }) {
   const status = useStore(voice.store, (s) => s.status);
   const pingMs = useStore(voice.store, (s) => s.pingMs);
   const sharing = useStore(voice.store, (s) => s.screenTrack !== null);
+  const cameraOn = useStore(voice.store, (s) => s.cameraTrack !== null);
   const mutedSpeaking = useStore(voice.store, (s) => s.mutedSpeaking);
   const channel = useStore(chat.store, (s) => s.channels.find((c) => c.id === channelId));
 
@@ -58,6 +59,15 @@ export function VoicePanel({ actions }: { actions: LayoutActions }) {
       >
         <Icon name="screen" size={16} />
         {sharing ? 'Parar transmissão' : 'Tela'}
+      </button>
+      <button
+        type="button"
+        className={`button secondary small ${cameraOn ? 'sharing' : ''}`}
+        disabled={status !== 'connected'}
+        onClick={() => void voice.toggleCamera()}
+      >
+        <Icon name={cameraOn ? 'video' : 'videoOff'} size={16} />
+        {cameraOn ? 'Desligar câmera' : 'Ligar câmera'}
       </button>
     </div>
   );

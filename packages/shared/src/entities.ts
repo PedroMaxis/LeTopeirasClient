@@ -118,6 +118,9 @@ export const voiceParticipantSchema = z.object({
   muted: z.boolean(),
   deafened: z.boolean(),
   screenSharing: z.boolean(),
+  camera: z.boolean().default(false),
+  /** Ids of the people whose screen share this participant is watching. */
+  watching: z.array(idSchema).default([]),
 });
 export type VoiceParticipant = z.infer<typeof voiceParticipantSchema>;
 

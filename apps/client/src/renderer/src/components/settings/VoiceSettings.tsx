@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PushToTalkStatus } from '../../../../shared/ipc';
 import { errorMessage } from '../../lib/api';
 import { levelFromDb, startMicMeter } from '../../lib/audio';
@@ -9,7 +9,10 @@ import { FieldLabel, ToggleRow } from '../ui/controls';
 
 const METER_SEGMENTS = 30;
 
-function useDevices(kind: 'audioinput' | 'audiooutput'): MediaDeviceInfo[] {
+type DeviceKind = 'audioinput' | 'audiooutput' | 'videoinput';
+
+/** Lists devices of a kind; `refreshKey` re-lists them (labels appear once access is granted). */
+function useDevices(kind: DeviceKind, refreshKey = 0): MediaDeviceInfo[] {
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -24,18 +27,19 @@ function useDevices(kind: 'audioinput' | 'audiooutput'): MediaDeviceInfo[] {
       cancelled = true;
       navigator.mediaDevices.removeEventListener('devicechange', refresh);
     };
-  }, [kind]);
+  }, [kind, refreshKey]);
   return devices;
 }
 
 function DeviceSelect(props: {
   id: string;
   label: string;
-  kind: 'audioinput' | 'audiooutput';
+  kind: DeviceKind;
   value: string;
+  refreshKey?: number;
   onChange(deviceId: string): void;
 }) {
-  const devices = useDevices(props.kind);
+  const devices = useDevices(props.kind, props.refreshKey);
   const known = devices.some((d) => d.deviceId === props.value);
   return (
     <div className="field">
@@ -147,6 +151,58 @@ function MicTest() {
           ))}
           {gate !== null && <i className="meter-threshold" style={{ left: `${gate * 100}%` }} />}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Shows our camera while on. Starts and stops with the switch, the chosen device and unmount. */
+function CameraTest({ deviceId, onAccess }: { deviceId: string; onAccess(): void }) {
+  const [on, setOn] = useState(false);
+  const video = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!on) return;
+    const el = video.current;
+    let cancelled = false;
+    let stream: MediaStream | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ video: deviceId === 'default' ? true : { deviceId: { exact: deviceId } } })
+      .then((granted) => {
+        // Turned off before the camera opened: release it right away.
+        if (cancelled) {
+          granted.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = granted;
+        if (el) el.srcObject = granted;
+        onAccess();
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) showToast(`Não foi possível abrir a câmera: ${errorMessage(err)}`);
+      });
+    return () => {
+      cancelled = true;
+      if (el) el.srcObject = null;
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [on, deviceId, onAccess]);
+
+  return (
+    <div className="field">
+      <div className="field-label">TESTE DE CÂMERA</div>
+      <div className="camera-test">
+        <button
+          type="button"
+          className="button primary"
+          aria-pressed={on}
+          onClick={() => setOn((v) => !v)}
+        >
+          {on ? 'Parar teste' : 'Testar câmera'}
+        </button>
+        {on && (
+          <video ref={video} className="camera-test-video mirror" autoPlay playsInline muted />
+        )}
       </div>
     </div>
   );
@@ -290,6 +346,9 @@ function KeybindField(props: {
 export function VoiceSettings() {
   const s = useStore(settings, (x) => x);
   const pttStatus = usePushToTalkStatus();
+  // Bumped once the camera is allowed, so the camera list shows device names.
+  const [cameraAccess, setCameraAccess] = useState(0);
+  const onCameraAccess = useCallback(() => setCameraAccess((n) => n + 1), []);
   const mode: InputMode = s.pushToTalk ? 'ptt' : s.voiceGate ? 'gate' : 'auto';
   return (
     <>
@@ -414,6 +473,16 @@ export function VoiceSettings() {
         </select>
         <span className="field-hint">{NOISE_HINTS[s.noiseSuppression]}</span>
       </div>
+      <div className="settings-divider" />
+      <DeviceSelect
+        id="video-device"
+        label="CÂMERA"
+        kind="videoinput"
+        value={s.videoDeviceId}
+        refreshKey={cameraAccess}
+        onChange={(videoDeviceId) => updateSettings({ videoDeviceId })}
+      />
+      <CameraTest deviceId={s.videoDeviceId} onAccess={onCameraAccess} />
     </>
   );
 }

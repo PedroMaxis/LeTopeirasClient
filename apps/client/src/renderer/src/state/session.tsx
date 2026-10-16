@@ -24,8 +24,8 @@ export class Session {
     const expired = () => this.end('Sua sessão expirou. Entre de novo.');
     this.api = new Api(token, expired);
     this.chat = new ChatClient(token, this.api, expired);
-    this.voice = new VoiceClient(this.api, (muted, deafened) =>
-      this.chat.reportVoiceState(muted, deafened),
+    this.voice = new VoiceClient(this.api, (muted, deafened, watching) =>
+      this.chat.reportVoiceState(muted, deafened, watching),
     );
 
     // After a gateway reconnect the server may have restarted and forgotten our mute state.
@@ -33,7 +33,7 @@ export class Session {
     this.chat.store.subscribe(() => {
       const { status } = this.chat.store.get();
       if (status === 'ready' && lastStatus !== 'ready' && this.voice.state.room) {
-        this.chat.reportVoiceState(this.voice.state.muted, this.voice.state.deafened);
+        this.voice.forceReport();
       }
       if (status === 'ready' && lastStatus !== 'ready' && this.idle) {
         this.chat.reportPresence('idle');

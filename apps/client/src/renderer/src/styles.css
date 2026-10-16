@@ -2282,6 +2282,31 @@ a:hover {
   border-radius: 4px;
 }
 
+.share-viewers {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.share-viewer-faces {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.share-viewer-faces > * + * {
+  margin-left: -6px;
+}
+
+.share-viewer-faces .avatar {
+  box-shadow: 0 0 0 2px rgb(0 0 0 / 0.6);
+}
+
+.share-viewer-more {
+  padding-left: 10px;
+  font-size: 11px;
+}
+
 .overlay-icon {
   display: flex;
   color: #fff;
@@ -3895,4 +3920,66 @@ button.tag-chip:hover {
 .image-viewer-actions {
   display: flex;
   gap: 8px;
+}
+
+/* Webcams in voice rooms (tiles and the focused camera). */
+.stage-tile:has(video) {
+  overflow: hidden;
+}
+
+.stage-tile video,
+.camera-focus video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+  background: #000;
+}
+
+/* A video covers the tile's inset ring, so the speaking ring is drawn on top. */
+.stage-tile.speaking::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 3px var(--speaking);
+  pointer-events: none;
+}
+
+.camera-focus {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+
+.camera-focus-name {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+}
+
+.mirror {
+  transform: scaleX(-1);
+}
+
+.camera-test {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.camera-test-video {
+  width: 320px;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  background: #000;
+  object-fit: cover;
 }

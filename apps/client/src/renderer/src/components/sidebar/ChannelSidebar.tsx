@@ -227,12 +227,18 @@ function VoiceMember({
   const { chat, voice } = useSession();
   const user = useStore(chat.store, (s) => s.users[participant.userId]);
   const roles = useStore(chat.store, (s) => s.roles);
+  const voiceStates = useStore(chat.store, (s) => s.voice[channelId]);
   // Speaking is only known for the room we're connected to.
   const speaking = useStore(
     voice.store,
     (s) => s.channelId === channelId && s.speaking.has(String(participant.userId)),
   );
   const volumeMenu = useVolumeMenu();
+
+  const watchers = (voiceStates ?? []).filter((v) =>
+    v.watching.includes(participant.userId),
+  ).length;
+  const watchersTitle = watchers === 0 ? 'Ninguém assistindo' : `${watchers} assistindo`;
 
   return (
     <div
@@ -245,7 +251,16 @@ function VoiceMember({
         {user?.displayName ?? '…'}
       </span>
       <span className="voice-member-icons">
-        {participant.screenSharing && <span className="live-badge small">AO VIVO</span>}
+        {participant.screenSharing && (
+          <span className="live-badge small" title={watchersTitle}>
+            AO VIVO
+          </span>
+        )}
+        {participant.camera && (
+          <span title="Câmera ligada">
+            <Icon name="video" size={14} />
+          </span>
+        )}
         {participant.deafened ? (
           <Icon name="headphonesOff" size={14} />
         ) : (

@@ -9,6 +9,8 @@ export const CHANGELOG: { version: string; items: string[] }[] = [
     items: [
       '**Imagens**: envie até 4 por mensagem (PNG, JPEG, WebP ou GIF, até 10 MB) com o `+`, colando (`Ctrl+V`) ou arrastando para o chat. Clique numa imagem para ver em tamanho grande.',
       '**Foto de perfil**: em Configurações → Perfil, troque ou remova a sua foto; ela aparece para todo mundo.',
+      '**Quem está assistindo**: cada transmissão mostra quem está vendo.',
+      '**Webcam**: ligue a câmera nas salas de voz.',
     ],
   },
   {

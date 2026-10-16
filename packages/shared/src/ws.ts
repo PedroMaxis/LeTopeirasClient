@@ -65,7 +65,11 @@ export const clientEventSchema = z.discriminatedUnion('type', [
   /** Self mute/deafen; LiveKit doesn't know about deafen, so the client reports both. */
   z.object({
     type: z.literal('voice.update'),
-    data: z.object({ muted: z.boolean(), deafened: z.boolean() }),
+    data: z.object({
+      muted: z.boolean(),
+      deafened: z.boolean(),
+      watching: z.array(idSchema).max(50).optional(),
+    }),
   }),
 ]);
 export type ClientEvent = z.infer<typeof clientEventSchema>;

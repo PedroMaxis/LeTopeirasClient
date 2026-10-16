@@ -2,6 +2,7 @@ import type { VoiceChannelState } from '@letopeiras/shared';
 
 interface Presence {
   screenSharing: boolean;
+  camera: boolean;
 }
 
 /**
@@ -11,12 +12,15 @@ interface Presence {
  */
 export class VoiceStateStore {
   private readonly channels = new Map<number, Map<number, Presence>>();
-  private readonly selfState = new Map<number, { muted: boolean; deafened: boolean }>();
+  private readonly selfState = new Map<
+    number,
+    { muted: boolean; deafened: boolean; watching: number[] }
+  >();
 
   join(channelId: number, userId: number): number[] {
     const members = this.members(channelId);
     if (members.has(userId)) return [];
-    members.set(userId, { screenSharing: false });
+    members.set(userId, { screenSharing: false, camera: false });
     return [channelId];
   }
 
@@ -27,12 +31,12 @@ export class VoiceStateStore {
     return [channelId];
   }
 
-  setScreenSharing(channelId: number, userId: number, screenSharing: boolean): number[] {
+  setTrack(channelId: number, userId: number, kind: keyof Presence, on: boolean): number[] {
     // A track event can arrive before participant_joined; treat it as a join.
     const members = this.members(channelId);
-    const presence = members.get(userId);
-    if (presence?.screenSharing === screenSharing) return [];
-    members.set(userId, { screenSharing });
+    const presence = members.get(userId) ?? { screenSharing: false, camera: false };
+    if (members.has(userId) && presence[kind] === on) return [];
+    members.set(userId, { ...presence, [kind]: on });
     return [channelId];
   }
 
@@ -40,10 +44,20 @@ export class VoiceStateStore {
     return this.channels.delete(channelId) ? [channelId] : [];
   }
 
-  setSelfState(userId: number, muted: boolean, deafened: boolean): number[] {
+  setSelfState(
+    userId: number,
+    muted: boolean,
+    deafened: boolean,
+    watching: number[] = [],
+  ): number[] {
     const prev = this.selfState.get(userId);
-    if (prev?.muted === muted && prev.deafened === deafened) return [];
-    this.selfState.set(userId, { muted, deafened });
+    if (
+      prev?.muted === muted &&
+      prev.deafened === deafened &&
+      prev.watching.join() === watching.join()
+    )
+      return [];
+    this.selfState.set(userId, { muted, deafened, watching });
     return [...this.channels].filter(([, m]) => m.has(userId)).map(([id]) => id);
   }
 
@@ -58,6 +72,7 @@ export class VoiceStateStore {
 
   get(channelId: number): VoiceChannelState {
     const members = this.channels.get(channelId) ?? new Map<number, Presence>();
+    const sharing = new Set([...members].filter(([, p]) => p.screenSharing).map(([id]) => id));
     return {
       channelId,
       participants: [...members].map(([userId, presence]) => ({
@@ -65,6 +80,10 @@ export class VoiceStateStore {
         muted: this.selfState.get(userId)?.muted ?? false,
         deafened: this.selfState.get(userId)?.deafened ?? false,
         screenSharing: presence.screenSharing,
+        camera: presence.camera,
+        watching: (this.selfState.get(userId)?.watching ?? []).filter(
+          (id) => id !== userId && sharing.has(id),
+        ),
       })),
     };
   }

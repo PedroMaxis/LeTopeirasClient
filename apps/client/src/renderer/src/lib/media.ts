@@ -2,11 +2,13 @@ import {
   AudioPresets,
   Track,
   VideoPreset,
+  VideoPresets,
   type AudioCaptureOptions,
   type LocalVideoTrack,
   type RoomOptions,
   type ScreenShareCaptureOptions,
   type TrackPublishOptions,
+  type VideoCaptureOptions,
 } from 'livekit-client';
 import type { Settings } from './settings';
 
@@ -38,6 +40,21 @@ export function audioCaptureOptions(s: Settings): AudioCaptureOptions {
     autoGainControl: s.autoGainControl,
   };
 }
+
+/** Webcam: 720p30 with 360p/180p layers, so small tiles and weak connections get less. */
+export function cameraCaptureOptions(s: Settings): VideoCaptureOptions {
+  return s.videoDeviceId === 'default'
+    ? { resolution: VideoPresets.h720.resolution }
+    : { deviceId: s.videoDeviceId, resolution: VideoPresets.h720.resolution };
+}
+
+export const cameraPublishOptions: TrackPublishOptions = {
+  source: Track.Source.Camera,
+  videoCodec: 'vp8',
+  simulcast: true,
+  videoEncoding: VideoPresets.h720.encoding,
+  videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360],
+};
 
 export function roomOptions(s: Settings): RoomOptions {
   return {
