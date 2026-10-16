@@ -160,7 +160,8 @@ export function MessageItem({ message, grouped }: Props) {
               })
             }
           />
-          {mine && (
+          {/* Only the text can be edited, so a message that is only images has nothing to edit. */}
+          {mine && message.content && (
             <IconButton icon="pencil" size={16} label="Editar" onClick={() => setEditing(true)} />
           )}
           {canDelete && (

@@ -870,7 +870,14 @@ export class VoiceClient {
     }
     const { cameraTrack } = this.state;
     if (cameraTrack && prev.videoDeviceId !== next.videoDeviceId) {
-      await cameraTrack.restartTrack(cameraCaptureOptions(next));
+      try {
+        await cameraTrack.restartTrack(cameraCaptureOptions(next));
+      } catch (err) {
+        // The old camera may already be closed: turn it off rather than leave a frozen image.
+        logEvent('camera.error', { error: errorMessage(err) });
+        showToast(`Não foi possível trocar de câmera: ${errorMessage(err)}`);
+        if (this.state.cameraTrack === cameraTrack) await this.toggleCamera();
+      }
     }
     const captureChanged =
       prev.inputDeviceId !== next.inputDeviceId ||

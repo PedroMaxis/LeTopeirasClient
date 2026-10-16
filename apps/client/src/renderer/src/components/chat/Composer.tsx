@@ -104,10 +104,12 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
       if (reply) cancelReply();
       else onEscape();
     }
-    // ↑ in an empty box edits your last message, like in Discord.
+    // ↑ in an empty box edits your last message with text, like in Discord.
     if (e.key === 'ArrowUp' && !value && !e.altKey && !e.ctrlKey && !e.shiftKey) {
       const { me, messages } = chat.store.get();
-      const last = messages[channel.id]?.messages.findLast((m) => m.authorId === me?.id);
+      const last = messages[channel.id]?.messages.findLast(
+        (m) => m.authorId === me?.id && m.content !== '',
+      );
       if (last) {
         e.preventDefault();
         editingMessage.set({ id: last.id });
