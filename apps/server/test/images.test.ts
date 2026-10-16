@@ -42,6 +42,42 @@ describe('toChatImage', () => {
     expect([meta.format, meta.pages, out.width, out.height]).toEqual(['webp', 2, 40, 40]);
   });
 
+  /** An animated GIF of `count` distinct frames (distinct, so the encoder keeps them all). */
+  const animation = async (side: number, count: number) => {
+    const frames = await Promise.all(
+      Array.from({ length: count }, (_, i) =>
+        sharp({
+          create: {
+            width: side,
+            height: side,
+            channels: 3,
+            background: { r: i % 256, g: (i * 3) % 256, b: (i * 7) % 256 },
+          },
+        })
+          .png()
+          .toBuffer(),
+      ),
+    );
+    const gif = await sharp(frames, { join: { animated: true } })
+      .gif()
+      .toBuffer();
+    const { pages = 1 } = await sharp(gif, { limitInputPixels: false }).metadata();
+    return { gif, totalPixels: side * side * pages };
+  };
+
+  it('keeps long GIFs whose frames add up to more than the per-frame limit', async () => {
+    const { gif, totalPixels } = await animation(400, 340);
+    expect(totalPixels).toBeGreaterThan(50_000_000);
+    const out = await toChatImage(gif);
+    expect([out.width, out.height]).toEqual([400, 400]);
+  }, 30_000);
+
+  it('rejects animations with too many pixels in all', async () => {
+    const { gif, totalPixels } = await animation(1000, 110);
+    expect(totalPixels).toBeGreaterThan(100_000_000);
+    await expect(toChatImage(gif)).rejects.toMatchObject({ code: 'invalid_image' });
+  }, 30_000);
+
   it('rejects things that are not images', async () => {
     await expect(toChatImage(Buffer.from('not an image'))).rejects.toMatchObject({
       code: 'invalid_image',
