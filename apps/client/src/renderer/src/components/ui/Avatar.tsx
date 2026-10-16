@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { User } from '@letopeiras/shared';
 import { fileUrl } from '../../lib/attachments';
 
@@ -26,15 +27,19 @@ interface Props {
 export function Avatar({ user, size, speaking = false, status }: Props) {
   const initial = user?.displayName.trim().charAt(0).toUpperCase() || '?';
   const style = { width: size, height: size };
+  // A photo that fails to load (offline, file gone) falls back to the initials.
+  const [broken, setBroken] = useState<string | null>(null);
+  const photo = user?.avatarUrl && user.avatarUrl !== broken ? user.avatarUrl : null;
   return (
     <span className="avatar-wrap" style={style}>
-      {user?.avatarUrl ? (
+      {photo ? (
         <img
           className={`avatar avatar-photo ${speaking ? 'speaking' : ''}`}
-          src={fileUrl(user.avatarUrl)}
+          src={fileUrl(photo)}
           alt=""
           draggable={false}
           style={style}
+          onError={() => setBroken(photo)}
         />
       ) : (
         <span
