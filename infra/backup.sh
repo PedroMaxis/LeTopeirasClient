@@ -18,9 +18,12 @@ gzip -f "$BACKUP_DIR/$name"
 
 # Images are content-addressed and never change, so a mirror that only adds new files is
 # enough (files deleted on the server stay in the mirror).
+# The uploads dir only exists after the first image, so skip the mirror until then.
 mkdir -p "$BACKUP_DIR/uploads"
-docker compose exec -T server sh -c 'cd /data && [ -d uploads ] && tar -cf - uploads || true' \
-  | tar -C "$BACKUP_DIR" -xf - --skip-old-files
+if docker compose exec -T server test -d /data/uploads; then
+  docker compose exec -T server tar -C /data -cf - uploads \
+    | tar -C "$BACKUP_DIR" -xf - --skip-old-files
+fi
 
 # Drop all but the newest $KEEP.
 ls -1t "$BACKUP_DIR"/letopeiras-*.db.gz | tail -n +"$((KEEP + 1))" | xargs -r rm -f

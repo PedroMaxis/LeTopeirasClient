@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import sharp from 'sharp';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileStore, hashFromUrl } from '../src/services/files';
 import { bearer, connect, createTestApp, multipartFile } from './helpers';
 
@@ -163,15 +163,23 @@ describe('message.send with images', () => {
     const hash = hashFromUrl(first.url);
     if (!hash) throw new Error('upload has no file');
     const path = new FileStore(t.uploadsDir).pathOf(hash);
-    ws.send({ type: 'message.delete', data: { messageId: m1.id } });
-    await ws.next('message.deleted');
-    await new Promise((r) => setTimeout(r, 50));
-    expect(existsSync(path)).toBe(true);
+    // The gateway hands the file cleanup to FileStore.collect; wait for each run to finish.
+    const collect = vi.spyOn(FileStore.prototype, 'collect');
+    try {
+      ws.send({ type: 'message.delete', data: { messageId: m1.id } });
+      await ws.next('message.deleted');
+      await vi.waitFor(() => expect(collect).toHaveBeenCalledTimes(1));
+      await collect.mock.results[0]?.value;
+      expect(existsSync(path)).toBe(true);
 
-    ws.send({ type: 'message.delete', data: { messageId: m2.id } });
-    await ws.next('message.deleted');
-    await new Promise((r) => setTimeout(r, 50));
-    expect(existsSync(path)).toBe(false);
-    ws.close();
+      ws.send({ type: 'message.delete', data: { messageId: m2.id } });
+      await ws.next('message.deleted');
+      await vi.waitFor(() => expect(collect).toHaveBeenCalledTimes(2));
+      await collect.mock.results[1]?.value;
+      expect(existsSync(path)).toBe(false);
+    } finally {
+      collect.mockRestore();
+      ws.close();
+    }
   });
 });
