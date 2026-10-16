@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import type { Channel } from '@letopeiras/shared';
 import { settings, updateSettings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { IconButton } from '../ui/controls';
 import { Icon } from '../ui/Icon';
-import { Composer } from './Composer';
+import { ATTACH_FILES_EVENT, Composer } from './Composer';
 import { MessageList, type MessageListHandle } from './MessageList';
 
 export function ChatView({
@@ -19,6 +19,8 @@ export function ChatView({
   const list = useRef<MessageListHandle>(null);
   const searchBox = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
+  const [dragging, setDragging] = useState(false);
+  const hasFiles = (e: DragEvent<HTMLElement>) => e.dataTransfer.types.includes('Files');
 
   // Ctrl+F jumps to the search box.
   useEffect(() => {
@@ -33,7 +35,27 @@ export function ChatView({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
   return (
-    <section className="chat">
+    <section
+      className="chat"
+      onDragEnter={(e) => {
+        if (hasFiles(e)) setDragging(true);
+      }}
+      onDragOver={(e) => {
+        if (hasFiles(e)) e.preventDefault();
+      }}
+      onDragLeave={(e) => {
+        // Leaving into a child keeps the overlay; only leaving the chat hides it.
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragging(false);
+        window.dispatchEvent(
+          new CustomEvent(ATTACH_FILES_EVENT, { detail: [...e.dataTransfer.files] }),
+        );
+      }}
+    >
+      {dragging && <div className="chat-drop-overlay">Solte para enviar</div>}
       <header className="main-header">
         <Icon name="hash" size={22} />
         <span className="main-header-title">{channel.name}</span>

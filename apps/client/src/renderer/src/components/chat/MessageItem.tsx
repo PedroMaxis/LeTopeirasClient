@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useMemberCard } from '../MemberCard';
 import { Avatar } from '../ui/Avatar';
 import { IconButton } from '../ui/controls';
+import { Attachments } from './Attachments';
 import { Embeds } from './Embeds';
 import { EmojiPicker } from './EmojiPicker';
 import { useMentionAutocomplete } from './MentionSuggestions';
@@ -118,15 +119,20 @@ export function MessageItem({ message, grouped }: Props) {
             }}
           />
         ) : (
-          <div className="message-content">
-            {renderMarkdown(message.content, renderMention)}
-            {message.editedAt !== null && (
-              <span className="message-edited" title={formatFull(message.editedAt)}>
-                {' '}
-                (editado)
-              </span>
-            )}
-          </div>
+          message.content && (
+            <div className="message-content">
+              {renderMarkdown(message.content, renderMention)}
+              {message.editedAt !== null && (
+                <span className="message-edited" title={formatFull(message.editedAt)}>
+                  {' '}
+                  (editado)
+                </span>
+              )}
+            </div>
+          )
+        )}
+        {!editing && message.attachments.length > 0 && (
+          <Attachments attachments={message.attachments} />
         )}
         {!editing && message.embeds.length > 0 && <Embeds embeds={message.embeds} />}
         {message.reactions.length > 0 && <Reactions message={message} />}
@@ -193,7 +199,7 @@ export function MessageItem({ message, grouped }: Props) {
           }}
         >
           <p>Tem certeza? Isso não dá para desfazer.</p>
-          <blockquote className="confirm-quote">{message.content}</blockquote>
+          <blockquote className="confirm-quote">{message.content || '📷 Imagem'}</blockquote>
         </ConfirmDialog>
       )}
     </div>
@@ -234,7 +240,7 @@ function ReplyQuote({ message }: { message: Message }) {
       <span className="message-reply-author" style={{ color: nameColor(author, roles) }}>
         {author?.displayName ?? 'Alguém'}
       </span>
-      <span className="message-reply-text">{snippetOf(original.content)}</span>
+      <span className="message-reply-text">{snippetOf(original.content) || '📷 Imagem'}</span>
     </button>
   );
 }
@@ -319,7 +325,14 @@ export function PendingItem({ pending }: { pending: PendingMessage }) {
           <span className="message-author">{me?.displayName}</span>
           <span className="message-time">{formatTimestamp(pending.createdAt)}</span>
         </div>
-        <div className="message-content">{pending.content}</div>
+        {pending.previews.length > 0 && (
+          <div className="attachments grid">
+            {pending.previews.map((src) => (
+              <img key={src} src={src} alt="" />
+            ))}
+          </div>
+        )}
+        {pending.content && <div className="message-content">{pending.content}</div>}
         {pending.failed && (
           <div className="message-failed">
             Não enviada.{' '}

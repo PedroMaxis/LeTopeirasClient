@@ -5,6 +5,13 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.3.0',
+    items: [
+      '**Imagens**: envie até 4 por mensagem (PNG, JPEG, WebP ou GIF, até 10 MB) com o `+`, colando (`Ctrl+V`) ou arrastando para o chat. Clique numa imagem para ver em tamanho grande.',
+      '**Foto de perfil**: em Configurações → Perfil, troque ou remova a sua foto; ela aparece para todo mundo.',
+    ],
+  },
+  {
     version: '0.2.0',
     items: [
       '**Reações**: passe o mouse numa mensagem e clique no rostinho com +; clique numa reação para somar a sua.',

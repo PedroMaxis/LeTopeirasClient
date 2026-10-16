@@ -32,7 +32,18 @@ export interface PendingMessage {
   failed: boolean;
   /** Answering this message; `replyPing` mentions its author. */
   reply?: { replyToId: number; replyPing: boolean } | undefined;
+  /** Uploaded images to attach; `previews` are the local blob URLs shown until the echo. */
+  attachmentIds: number[];
+  previews: string[];
 }
+
+/** Images to attach to a message: uploaded ids, plus the previews to show while sending. */
+export interface MessageAttachments {
+  ids: number[];
+  previews: string[];
+}
+
+const revokePreviews = (p: PendingMessage) => p.previews.forEach((url) => URL.revokeObjectURL(url));
 
 export interface ChatState {
   status: GatewayStatus;
@@ -139,7 +150,12 @@ export class ChatClient {
     }
   }
 
-  sendMessage(channelId: number, content: string, reply?: PendingMessage['reply']): void {
+  sendMessage(
+    channelId: number,
+    content: string,
+    reply?: PendingMessage['reply'],
+    attachments: MessageAttachments = { ids: [], previews: [] },
+  ): void {
     const pending: PendingMessage = {
       nonce: crypto.randomUUID(),
       channelId,
@@ -147,6 +163,8 @@ export class ChatClient {
       createdAt: Date.now(),
       failed: false,
       reply,
+      attachmentIds: attachments.ids,
+      previews: attachments.previews,
     };
     this.store.set((s) => ({ pending: [...s.pending, pending] }));
     this.lastTypingSent.delete(channelId);
@@ -161,6 +179,8 @@ export class ChatClient {
   }
 
   discardMessage(nonce: string): void {
+    const gone = this.store.get().pending.find((p) => p.nonce === nonce);
+    if (gone) revokePreviews(gone);
     this.store.set((s) => ({ pending: s.pending.filter((p) => p.nonce !== nonce) }));
   }
 
@@ -266,6 +286,8 @@ export class ChatClient {
       case 'message.created': {
         const { message, nonce } = event.data;
         const before = this.store.get();
+        const echoed = nonce ? before.pending.find((p) => p.nonce === nonce) : undefined;
+        if (echoed) revokePreviews(echoed);
         const channel = before.channels.find((c) => c.id === message.channelId);
         const mentionsMe =
           before.me !== null &&
@@ -473,6 +495,7 @@ export class ChatClient {
         content: pending.content,
         nonce: pending.nonce,
         ...pending.reply,
+        ...(pending.attachmentIds.length > 0 ? { attachmentIds: pending.attachmentIds } : {}),
       },
     });
     if (!sent) this.updatePending(pending.nonce, { failed: true });

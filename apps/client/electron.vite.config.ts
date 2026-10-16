@@ -18,7 +18,7 @@ function originPair(url: string): string[] {
 /**
  * Fills the CSP's connect-src with the hosts the renderer actually talks to: our server
  * (REST + WebSocket) and LiveKit (signaling). Dev also allows the local server, LiveKit and
- * Vite's HMR socket.
+ * Vite's HMR socket. The same server is an image source (chat images, avatars).
  */
 function connectSrc(mode: string, isDev: boolean): Plugin {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
@@ -34,7 +34,11 @@ function connectSrc(mode: string, isDev: boolean): Plugin {
   }
   return {
     name: 'letopeiras-csp-connect-src',
-    transformIndexHtml: (html) => html.replace('%CONNECT_SRC%', [...sources].join(' ')),
+    transformIndexHtml: (html) =>
+      html
+        .replace('%CONNECT_SRC%', [...sources].join(' '))
+        // Chat images and avatars come from our server over HTTP(S) (plain HTTP in dev).
+        .replace('%IMG_SRC%', originPair(serverUrl)[0] ?? ''),
   };
 }
 

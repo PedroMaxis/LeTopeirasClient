@@ -26,7 +26,8 @@ export function notifyMessage(
   if (context.mentionsMe && !focused) void window.api.flashWindow();
   const notify = context.mentionsMe ? !(focused && context.viewing) : notifyAll && !focused;
   if (!notify) return;
-  const text = hideSpoilers(message.content);
+  // An image-only message has no text to show.
+  const text = hideSpoilers(message.content) || '📷 Imagem';
   const body = text.length > MAX_BODY ? `${text.slice(0, MAX_BODY)}…` : text;
   const who = author?.displayName ?? 'Alguém';
   const title = !context.mentionsMe

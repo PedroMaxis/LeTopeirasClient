@@ -3,16 +3,23 @@ import { LIMITS, type Channel } from '@letopeiras/shared';
 import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
 import { IconButton } from '../ui/controls';
+import { Icon } from '../ui/Icon';
 import { INSERT_MENTION_EVENT } from '../MemberCard';
+import { showToast } from '../../lib/toast';
+import { AttachmentTray, useAttachmentTray } from './AttachmentTray';
 import { EmojiPicker } from './EmojiPicker';
 import { editingMessage, replyingTo } from './MessageItem';
 import { useMentionAutocomplete } from './MentionSuggestions';
+
+/** Window event with `File[]` in `detail` (dropped on the chat): goes into the open composer. */
+export const ATTACH_FILES_EVENT = 'letopeiras:attach-files';
 
 export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): void }) {
   const { chat } = useSession();
   const [value, setText] = useState(() => chat.getDraft(channel.id));
   const [emojiOpen, setEmojiOpen] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
+  const tray = useAttachmentTray();
   // Mounted per channel (keyed in ChatView), so the draft is what survives switching.
   const setValue = (next: string) => {
     setText(next);
@@ -60,13 +67,29 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
     if (reply) input.current?.focus();
   }, [reply]);
 
+  // Files dropped on the chat (ChatView) go to the tray like pasted or picked ones.
+  useEffect(() => {
+    const onFiles = (event: Event) => tray.add((event as CustomEvent<File[]>).detail);
+    window.addEventListener(ATTACH_FILES_EVENT, onFiles);
+    return () => window.removeEventListener(ATTACH_FILES_EVENT, onFiles);
+  });
+
   const send = () => {
     const content = value.trim();
-    if (!content) return;
+    if (!content && tray.items.length === 0) return;
+    if (tray.uploading) {
+      showToast('Espere as imagens terminarem de enviar.');
+      return;
+    }
+    if (tray.failed) {
+      showToast('Remova as imagens que falharam antes de enviar.');
+      return;
+    }
     chat.sendMessage(
       channel.id,
       content,
       reply ? { replyToId: reply.messageId, replyPing: reply.ping } : undefined,
+      tray.take(),
     );
     if (reply) cancelReply();
     setValue('');
@@ -118,7 +141,21 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
           <IconButton icon="close" size={16} label="Cancelar resposta" onClick={cancelReply} />
         </div>
       )}
+      <AttachmentTray tray={tray} />
       <div className={`composer-box ${reply ? 'replying' : ''}`}>
+        <label className="composer-attach" title="Enviar imagem" aria-label="Enviar imagem">
+          <Icon name="plus" size={20} />
+          <input
+            type="file"
+            multiple
+            hidden
+            accept="image/png,image/jpeg,image/webp,image/gif"
+            onChange={(e) => {
+              tray.add([...(e.target.files ?? [])]);
+              e.target.value = '';
+            }}
+          />
+        </label>
         <textarea
           ref={input}
           className="composer-input"
@@ -135,6 +172,13 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
           }}
           onSelect={(e) => mentions.trackCursor(e.currentTarget)}
           onKeyDown={onKeyDown}
+          onPaste={(e) => {
+            const files = [...e.clipboardData.files];
+            if (files.length > 0) {
+              e.preventDefault();
+              tray.add(files);
+            }
+          }}
         />
         {mentions.popover}
         <IconButton

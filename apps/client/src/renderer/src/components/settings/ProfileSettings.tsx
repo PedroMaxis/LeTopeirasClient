@@ -14,9 +14,22 @@ export function ProfileSettings() {
   const roles = useStore(chat.store, (s) => s.roles);
   const [displayName, setDisplayName] = useState(me?.displayName ?? '');
   const [busy, setBusy] = useState(false);
+  const [busyPhoto, setBusyPhoto] = useState(false);
 
   const myRoles = roles.filter((r) => me?.roleIds.includes(r.id));
   const preview = me ? { ...me, displayName: displayName.trim() || me.displayName } : undefined;
+
+  // The new avatar comes back through user.updated, which replaces `me`.
+  const changePhoto = async (run: () => Promise<unknown>) => {
+    setBusyPhoto(true);
+    try {
+      await run();
+    } catch (err) {
+      showToast(errorMessage(err));
+    } finally {
+      setBusyPhoto(false);
+    }
+  };
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -55,6 +68,32 @@ export function ProfileSettings() {
               ))}
             </div>
           )}
+          <div className="profile-photo-actions">
+            <label className="button secondary small">
+              {busyPhoto ? 'Enviando…' : 'Trocar foto'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                hidden
+                disabled={busyPhoto}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void changePhoto(() => api.setAvatar(file));
+                }}
+              />
+            </label>
+            {me?.avatarUrl && (
+              <button
+                type="button"
+                className="button secondary small"
+                disabled={busyPhoto}
+                onClick={() => void changePhoto(() => api.removeAvatar())}
+              >
+                Remover
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

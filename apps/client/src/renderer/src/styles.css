@@ -773,6 +773,11 @@ a:hover {
     0 0 0 4px var(--speaking);
 }
 
+.avatar-photo {
+  object-fit: cover;
+  display: block;
+}
+
 .presence-dot {
   position: absolute;
   right: -2px;
@@ -1328,6 +1333,7 @@ a:hover {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .messages-wrap {
@@ -3751,4 +3757,142 @@ button.tag-chip:hover {
 
 .debug-panel .encoder {
   color: var(--speaking);
+}
+
+/* ------------------------------------------------------- images (chat) */
+
+.profile-photo-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.attachment-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.attachment-thumb {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-input);
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.attachment-thumb.failed {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+}
+
+.attachment-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  background: var(--accent);
+  transition: width 0.1s linear;
+}
+
+.attachment-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+}
+
+.composer-attach {
+  align-self: flex-end;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+}
+
+.composer-attach:hover {
+  color: var(--accent);
+}
+
+.attachments {
+  display: grid;
+  gap: 4px;
+  max-width: 400px;
+  margin-top: 4px;
+}
+
+.attachments.grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.attachments.single {
+  grid-template-columns: 1fr;
+}
+
+.attachment {
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-input);
+  cursor: zoom-in;
+  justify-self: start;
+  max-width: 100%;
+  display: block;
+}
+
+.attachment img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.chat-drop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px dashed var(--accent);
+  color: var(--text-head);
+  font-size: 18px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.image-viewer {
+  position: fixed;
+  inset: 30px 0 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.image-viewer img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.image-viewer-actions {
+  display: flex;
+  gap: 8px;
 }

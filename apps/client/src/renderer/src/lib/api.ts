@@ -23,6 +23,8 @@ import {
   type UpdateRoleRequest,
   type User,
   type VoiceTokenResponse,
+  type Attachment,
+  uploadResponseSchema,
 } from '@letopeiras/shared';
 
 /** Base URL of our server. Set VITE_SERVER_URL in apps/client/.env to override. */
@@ -51,14 +53,17 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.token) headers['authorization'] = `Bearer ${options.token}`;
-  if (options.body !== undefined) headers['content-type'] = 'application/json';
+  // FormData sets its own multipart content-type (with the boundary).
+  const body = options.body;
+  if (body !== undefined && !(body instanceof FormData))
+    headers['content-type'] = 'application/json';
 
   let res: Response;
   try {
     res = await fetch(`${SERVER_URL}${path}`, {
       method,
       headers,
-      body: options.body === undefined ? null : JSON.stringify(options.body),
+      body: body === undefined ? null : body instanceof FormData ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, 'network', 'Não foi possível falar com o servidor. Ele está no ar?');
@@ -95,6 +100,53 @@ export class Api {
       throw err;
     }
   }
+
+  /** Uploads one chat image; `onProgress` gets 0–1. XHR because fetch has no upload progress. */
+  uploadImage = (file: File, onProgress: (fraction: number) => void): Promise<Attachment> =>
+    new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${SERVER_URL}/uploads`);
+      xhr.setRequestHeader('authorization', `Bearer ${this.token}`);
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) onProgress(e.loaded / e.total);
+      };
+      const failed = () => reject(new ApiError(0, 'network', 'Não foi possível enviar a imagem.'));
+      xhr.onerror = failed;
+      xhr.onabort = failed;
+      xhr.ontimeout = failed;
+      // Every path settles the promise, even a body that isn't JSON (a proxy's error page),
+      // so the tray never stays stuck on "uploading".
+      xhr.onload = () => {
+        let json: unknown = null;
+        try {
+          json = JSON.parse(xhr.responseText || 'null');
+        } catch {
+          // Not JSON: reported as an unexpected answer below.
+        }
+        if (xhr.status === 201) {
+          const uploaded = uploadResponseSchema.safeParse(json);
+          if (uploaded.success) return resolve(uploaded.data);
+        }
+        if (xhr.status === 401) this.onUnauthorized();
+        const parsed = apiErrorSchema.safeParse(json);
+        reject(
+          parsed.success
+            ? new ApiError(xhr.status, parsed.data.error.code, parsed.data.error.message)
+            : new ApiError(xhr.status, 'unknown', `Erro inesperado do servidor (${xhr.status})`),
+        );
+      };
+      const form = new FormData();
+      form.append('file', file);
+      xhr.send(form);
+    });
+
+  setAvatar = (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return this.call<User>('PUT', '/users/me/avatar', form);
+  };
+
+  removeAvatar = () => this.call<User>('DELETE', '/users/me/avatar');
 
   logout = () => this.call<undefined>('POST', '/auth/logout');
 
