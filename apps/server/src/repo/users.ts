@@ -60,6 +60,10 @@ export function updateDisplayName(db: Db, id: number, displayName: string): void
   db.prepare('UPDATE users SET display_name = ? WHERE id = ?').run(displayName, id);
 }
 
+export function updateAvatarUrl(db: Db, id: number, url: string | null): void {
+  db.prepare('UPDATE users SET avatar_url = ? WHERE id = ?').run(url, id);
+}
+
 export function updatePasswordHash(db: Db, id: number, passwordHash: string): void {
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, id);
 }

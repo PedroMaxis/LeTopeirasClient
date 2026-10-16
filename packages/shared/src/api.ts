@@ -2,6 +2,7 @@
 import { z } from 'zod';
 import { EVERYONE_MENTION, LIMITS } from './constants';
 import {
+  attachmentSchema,
   categorySchema,
   channelSchema,
   channelTypeSchema,
@@ -9,7 +10,12 @@ import {
   messageSchema,
   roleSchema,
   userSchema,
+  type Attachment,
 } from './entities';
+
+/** POST /uploads answers with the stored image. */
+export const uploadResponseSchema = attachmentSchema;
+export type UploadResponse = Attachment;
 
 export const usernameSchema = z
   .string()
