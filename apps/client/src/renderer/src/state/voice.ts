@@ -146,6 +146,8 @@ export class VoiceClient {
   private readonly audioSources = new Map<string, { identity: string; screen: boolean }>();
   private systemAudio: { capture: SystemAudio; track: LocalTrack } | null = null;
   private micProcessor: MicProcessor | null = null;
+  /** A camera is being opened: a second toggle meanwhile must not open another one. */
+  private cameraBusy = false;
   private audioContext: AudioContext | null = null;
   private pingTimer: ReturnType<typeof setInterval> | undefined;
   private unsubscribeSettings: () => void;
@@ -387,21 +389,29 @@ export class VoiceClient {
       await room.localParticipant.unpublishTrack(cameraTrack, true);
       return;
     }
+    if (this.cameraBusy) return;
+    this.cameraBusy = true;
+    let track: LocalVideoTrack | undefined;
     try {
-      const track = await createLocalVideoTrack(cameraCaptureOptions(settings.get()));
-      track.once(TrackEvent.Ended, () => {
-        if (this.state.cameraTrack === track) void this.toggleCamera();
+      track = await createLocalVideoTrack(cameraCaptureOptions(settings.get()));
+      const opened = track;
+      opened.once(TrackEvent.Ended, () => {
+        if (this.state.cameraTrack === opened) void this.toggleCamera();
       });
-      await room.localParticipant.publishTrack(track, cameraPublishOptions);
+      await room.localParticipant.publishTrack(opened, cameraPublishOptions);
       if (this.state.room !== room) {
-        track.stop();
+        opened.stop();
         return;
       }
-      this.store.set({ cameraTrack: track });
+      this.store.set({ cameraTrack: opened });
       logEvent('camera.start', { codec: cameraPublishOptions.videoCodec, simulcast: true });
     } catch (err) {
+      // Stopping it also turns the camera light off when publishing failed.
+      track?.stop();
       logEvent('camera.error', { error: errorMessage(err) });
       showToast(`Não foi possível ligar a câmera: ${errorMessage(err)}`);
+    } finally {
+      this.cameraBusy = false;
     }
   }
 

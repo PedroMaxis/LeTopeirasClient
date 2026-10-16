@@ -201,6 +201,9 @@ export function VoiceStage({
   const focusedCamera = focused
     ? undefined
     : participants.find((p) => `c-${p.identity}` === focusedId && cameraOf(p));
+  // The focused camera went away (turned off, left): drop the focus instead of keeping the
+  // key, so it doesn't pop back when that camera turns on again.
+  if (focusedId?.startsWith('c-') && !focusedCamera) setFocusedId(null);
   const focusing = focused !== undefined || focusedCamera !== undefined;
   const gridCount = focusing ? 0 : shares.length || participants.length;
   const tile = useTileSize(grid, gridCount);
@@ -427,7 +430,13 @@ function ParticipantTile(props: {
       style={props.style}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}
-      title={props.onClick ? 'Ver transmissão' : 'Clique direito: volume'}
+      title={
+        props.live
+          ? 'Ver transmissão'
+          : props.camera
+            ? 'Ver câmera'
+            : 'Clique direito: volume'
+      }
     >
       {props.camera ? (
         <CameraView track={props.camera} mirror={props.isLocal} />
