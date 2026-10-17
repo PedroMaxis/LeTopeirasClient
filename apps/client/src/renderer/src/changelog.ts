@@ -5,6 +5,12 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.3.1',
+    items: [
+      'Corrigido: no canal de voz, os quadros das pessoas podiam ficar um em cima do outro quando várias entravam seguidas.',
+    ],
+  },
+  {
     version: '0.3.0',
     items: [
       '**Imagens**: envie até 4 por mensagem (PNG, JPEG, WebP ou GIF, até 10 MB) com o `+`, colando (`Ctrl+V`) ou arrastando para o chat. Clique numa imagem para ver em tamanho grande.',
