@@ -3,6 +3,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type MouseEvent,
   type RefObject,
 } from 'react';
@@ -69,6 +70,17 @@ function useTileSize(el: HTMLElement | null, count: number) {
 }
 
 /**
+ * A grid tile's size as CSS variables, not inline width/height: Flip records those at the
+ * start of a flip and puts them back at the end, which would undo a size React set meanwhile.
+ */
+function tileVars(size: { width: number; height: number }): CSSProperties {
+  return {
+    ['--tile-width' as string]: `${size.width}px`,
+    ['--tile-height' as string]: `${size.height}px`,
+  };
+}
+
+/**
  * Animates the stage's tiles (`data-flip-id`) to their new place and size when `layoutKey`
  * changes: a share starts or stops, someone joins, grid ↔ focus. The positions are recorded
  * after every render, so the next change animates from what was on screen. Tiles that move
@@ -76,6 +88,9 @@ function useTileSize(el: HTMLElement | null, count: number) {
  *
  * Not while a flip runs: Flip.getState() on elements mid-flip ends the flip at once (and the
  * stage re-renders many times a second), so the state is recorded again when it completes.
+ * A layout change mid-flip (people joining one after another) completes the running flip
+ * first and doesn't animate: a new flip would read the tiles' temporary absolute styles as
+ * their final ones and restore them at the end, leaving the tiles stacked on each other.
  */
 function useLayoutFlip(
   container: RefObject<HTMLElement | null>,
@@ -84,23 +99,29 @@ function useLayoutFlip(
 ): void {
   const state = useRef<Flip.FlipState | null>(null);
   const lastKey = useRef(layoutKey);
-  const running = useRef(false);
+  const running = useRef<gsap.core.Timeline | null>(null);
   useLayoutEffect(() => {
     const el = container.current;
+    const changed = lastKey.current !== layoutKey;
+    lastKey.current = layoutKey;
+    const interrupted = running.current !== null && (changed || hidden);
+    // Completing it runs onComplete, which records the state of the tiles now on screen.
+    if (interrupted) running.current?.progress(1).kill();
     // Hidden, everything measures 0: start over when the stage shows again.
     if (!el || hidden) {
       state.current = null;
-      running.current = false;
+      running.current = null;
       return;
     }
+    if (running.current) return;
     const targets = el.querySelectorAll<HTMLElement>('[data-flip-id]');
     const animate =
       state.current !== null &&
-      lastKey.current !== layoutKey &&
+      changed &&
+      !interrupted &&
       !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (animate && state.current) {
-      running.current = true;
-      Flip.from(state.current, {
+      running.current = Flip.from(state.current, {
         targets,
         duration: 0.4,
         ease: 'power2.inOut',
@@ -112,12 +133,11 @@ function useLayoutFlip(
             { opacity: 1, scale: 1, duration: 0.3 },
           ),
         onComplete: () => {
-          running.current = false;
+          running.current = null;
           state.current = Flip.getState(el.querySelectorAll<HTMLElement>('[data-flip-id]'));
         },
       });
     }
-    lastKey.current = layoutKey;
     if (!running.current) state.current = Flip.getState(targets);
   });
 }
@@ -425,7 +445,7 @@ function ParticipantTile(props: {
       type="button"
       className={`stage-tile ${props.speaking ? 'speaking' : ''} ${props.onClick ? 'live' : ''}`}
       data-flip-id={`p-${props.participant.identity}`}
-      style={props.style}
+      style={props.style && tileVars(props.style)}
       onClick={props.onClick}
       onContextMenu={props.onContextMenu}
       title={
@@ -605,7 +625,7 @@ function ShareTile({
       className={`share-tile ${variant} ${watching ? '' : 'not-watching'}`}
       data-flip-id={`s-${identity}`}
       ref={container}
-      style={style}
+      style={style && tileVars(style)}
       onClick={onSelect}
       onDoubleClick={large ? toggleFullscreen : undefined}
       title={onSelect && small ? `Ver a transmissão de ${share.name}` : undefined}

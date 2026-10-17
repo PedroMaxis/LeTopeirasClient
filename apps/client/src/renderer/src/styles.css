@@ -2396,6 +2396,13 @@ a:hover {
   max-width: none;
 }
 
+/* Size from useTileSize, through tileVars(). */
+.stage-grid > .stage-tile,
+.stage-grid > .share-tile {
+  width: var(--tile-width);
+  height: var(--tile-height);
+}
+
 .stage-tile.live {
   cursor: pointer;
 }
