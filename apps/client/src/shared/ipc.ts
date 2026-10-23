@@ -16,6 +16,9 @@ export const IpcChannel = {
   SessionLoad: 'session:load',
   SessionSave: 'session:save',
   SessionClear: 'session:clear',
+  SessionRemember: 'session:remember',
+  VoiceResumeState: 'voice:resume-state',
+  VoiceTakeResume: 'voice:take-resume',
   SystemAudioStatus: 'system-audio:status',
   SystemAudioStart: 'system-audio:start',
   SystemAudioStop: 'system-audio:stop',
@@ -70,6 +73,15 @@ export interface KeybindBinding {
   action: Extract<VoiceAction, 'toggleMute' | 'toggleDeafen'>;
   vk: number;
   mods: KeyModifier[];
+}
+
+/** The voice room we're in, kept by main so a crashed renderer can rejoin it after the reload. */
+export interface VoiceResume {
+  channelId: number;
+  muted: boolean;
+  deafened: boolean;
+  /** A screen share or the camera was on; those don't come back by themselves. */
+  sharing: boolean;
 }
 
 /** Drives the tray menu checkmarks and the icon's status dot. */
@@ -127,9 +139,15 @@ export interface LeTopeirasApi {
   getLaunchAtLogin(): Promise<boolean>;
   setLaunchAtLogin(enabled: boolean): Promise<void>;
 
-  /** The session token saved with "Manter conectado", or null. Encrypted with safeStorage. */
+  /**
+   * The current session's token after a renderer reload (kept in main's memory), else the one
+   * saved with "Manter conectado" (encrypted with safeStorage), or null.
+   */
   loadSession(): Promise<string | null>;
   saveSession(token: string): Promise<void>;
+  /** Keeps the token in main's memory only (never on disk), for `loadSession` after a crash. */
+  rememberSession(token: string): Promise<void>;
+  /** Forgets the token, both in memory and on disk. */
   clearSession(): Promise<void>;
 
   /** Whether the native loopback addon loaded. */
@@ -161,6 +179,10 @@ export interface LeTopeirasApi {
   /** Called on a global shortcut or a tray menu click. Returns an unsubscribe function. */
   onVoiceAction(listener: (action: VoiceAction) => void): () => void;
   setTrayVoiceState(state: TrayVoiceState): Promise<void>;
+  /** The voice room we're in (null when none), in main's memory only. */
+  setVoiceResume(state: VoiceResume | null): Promise<void>;
+  /** After main reloaded a crashed renderer: the room it was in, once; otherwise null. */
+  takeVoiceResume(): Promise<VoiceResume | null>;
 
   /** Version of an update that is downloaded and waiting for a restart, or null. */
   getReadyUpdate(): Promise<string | null>;

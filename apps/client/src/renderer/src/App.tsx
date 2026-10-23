@@ -31,6 +31,8 @@ export function App() {
   const endIntro = useCallback(() => setIntro(false), []);
 
   const start = useCallback((token: string) => {
+    // So a crashed and reloaded page stays logged in even without "Manter conectado".
+    void window.api.rememberSession(token);
     const session = new Session(token, (reason) => setPhase({ kind: 'auth', notice: reason }));
     setPhase({ kind: 'in', session });
   }, []);

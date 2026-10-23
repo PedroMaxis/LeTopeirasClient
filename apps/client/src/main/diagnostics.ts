@@ -5,6 +5,7 @@ import { app, crashReporter, ipcMain, powerMonitor, screen, type BrowserWindow }
 import { z } from 'zod';
 import { IpcChannel } from '../shared/ipc';
 import { assertTrustedSender } from './renderer';
+import { keepVoiceForReload } from './voice-resume';
 
 /** More renderer crashes than this within the window leaves the page dead instead of looping. */
 const RELOAD_LIMIT = 3;
@@ -110,6 +111,7 @@ export function registerDiagnostics(getWindow: () => BrowserWindow | null): void
     if (reloads.length >= RELOAD_LIMIT) return;
     reloads.push(now);
     logEvent('main.reload');
+    keepVoiceForReload();
     contents.reload();
   });
 

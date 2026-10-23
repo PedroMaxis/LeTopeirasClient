@@ -154,6 +154,7 @@ export class VoiceClient {
   private unsubscribePushToTalk: () => void;
   private unsubscribeVoiceAction: () => void;
   private unsubscribeTray: () => void;
+  private unsubscribeResume: () => void;
   private unsubscribeReport: () => void;
   private speakingTimer: ReturnType<typeof setInterval> | undefined;
   /** Last time each identity was above the speaking level. */
@@ -211,6 +212,19 @@ export class VoiceClient {
     };
     syncTray();
     this.unsubscribeTray = this.store.subscribe(syncTray);
+    // Main keeps the room so it can be rejoined if this page crashes.
+    let resume = '';
+    const syncResume = () => {
+      const { channelId, muted, deafened, screenTrack, cameraTrack } = this.state;
+      const sharing = screenTrack !== null || cameraTrack !== null;
+      const state = channelId === null ? null : { channelId, muted, deafened, sharing };
+      const key = JSON.stringify(state);
+      if (key === resume) return;
+      resume = key;
+      void window.api.setVoiceResume(state);
+    };
+    syncResume();
+    this.unsubscribeResume = this.store.subscribe(syncResume);
     this.unsubscribeReport = this.store.subscribe(() => this.report());
   }
 
@@ -296,6 +310,14 @@ export class VoiceClient {
       const rtt = room.engine.client.rtt;
       this.store.set({ pingMs: rtt > 0 ? Math.round(rtt) : null });
     }, 2000);
+  }
+
+  /** Joins with the given mute/deafen, as after a crash: no sounds for toggling them. */
+  async rejoin(channelId: number, muted: boolean, deafened: boolean): Promise<boolean> {
+    // Mute and deafen survive leaving a room, so they apply to the join below.
+    this.store.set({ muted, deafened });
+    await this.join(channelId);
+    return this.state.channelId === channelId && this.state.status === 'connected';
   }
 
   async leave(): Promise<void> {
@@ -488,9 +510,11 @@ export class VoiceClient {
     this.unsubscribePushToTalk();
     this.unsubscribeVoiceAction();
     this.unsubscribeTray();
+    this.unsubscribeResume();
     this.unsubscribeReport();
     void window.api.setKeybinds([]);
     void window.api.setTrayVoiceState({ inVoice: false, muted: false, deafened: false });
+    void window.api.setVoiceResume(null);
     void this.leave();
     this.mixer.close();
     this.audioContainer.remove();

@@ -23,6 +23,7 @@ const api: LeTopeirasApi = {
   loadSession: () => ipcRenderer.invoke(IpcChannel.SessionLoad),
   saveSession: (token) => ipcRenderer.invoke(IpcChannel.SessionSave, token),
   clearSession: () => ipcRenderer.invoke(IpcChannel.SessionClear),
+  rememberSession: (token) => ipcRenderer.invoke(IpcChannel.SessionRemember, token),
   getSystemAudioStatus: () => ipcRenderer.invoke(IpcChannel.SystemAudioStatus),
   startSystemAudio: (sourceId) => ipcRenderer.invoke(IpcChannel.SystemAudioStart, sourceId),
   stopSystemAudio: () => ipcRenderer.invoke(IpcChannel.SystemAudioStop),
@@ -43,6 +44,8 @@ const api: LeTopeirasApi = {
     return () => ipcRenderer.off(IpcChannel.VoiceAction, handler);
   },
   setTrayVoiceState: (state) => ipcRenderer.invoke(IpcChannel.TrayVoiceState, state),
+  setVoiceResume: (state) => ipcRenderer.invoke(IpcChannel.VoiceResumeState, state),
+  takeVoiceResume: () => ipcRenderer.invoke(IpcChannel.VoiceTakeResume),
   getReadyUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateGetReady),
   onUpdateReady: (listener) => {
     const handler = (_event: unknown, version: string) => listener(version);

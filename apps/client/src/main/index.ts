@@ -13,6 +13,7 @@ import { registerSystemAudio } from './system-audio';
 import { createTray, showWindow } from './tray';
 import { registerVoiceControls } from './voice-controls';
 import { registerUpdater } from './updater';
+import { registerVoiceResume } from './voice-resume';
 import { restoreWindowState, trackWindowState } from './window-state';
 
 // Remote voices must play as soon as they arrive, without waiting for a click.
@@ -177,6 +178,7 @@ if (!app.requestSingleInstanceLock()) {
     registerSystemAudio();
     registerPushToTalk();
     registerVoiceControls();
+    registerVoiceResume();
     registerIpc(() => mainWindow);
     mainWindow = createMainWindow();
     createTray(mainWindow, () => app.quit());
