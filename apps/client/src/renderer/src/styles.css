@@ -1389,6 +1389,8 @@ a:hover {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  /* "Aparência" settings (lib/appearance.ts). */
+  font-size: var(--chat-font-size, 15px);
 }
 
 /* Pushes short histories to the bottom, like the mockup. */
@@ -1457,7 +1459,7 @@ a:hover {
   display: flex;
   gap: 16px;
   padding: 1px 16px;
-  margin-top: 14px;
+  margin-top: var(--message-group-gap, 14px);
 }
 
 .message.grouped {
@@ -1474,7 +1476,7 @@ a:hover {
   font-size: 11px;
   color: var(--text-muted);
   text-align: right;
-  line-height: 21px;
+  line-height: calc(var(--chat-font-size, 15px) * 1.4);
   visibility: hidden;
 }
 
@@ -1527,7 +1529,7 @@ a:hover {
   border-radius: 6px;
   background: var(--bg-rail);
   font-family: Consolas, 'Cascadia Mono', monospace;
-  font-size: 13px;
+  font-size: 0.87em;
   line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -1566,6 +1568,39 @@ a:hover {
 
 .md-spoiler.shown * {
   visibility: visible;
+}
+
+/* Compact mode: "14:32 Nome texto" on one line, no avatar. */
+.message.compact {
+  gap: 0;
+  margin-top: calc(var(--message-group-gap, 14px) / 2);
+}
+
+.message.compact.grouped {
+  margin-top: 0;
+}
+
+/* Wrapped lines, code blocks and images line up after the time, like Discord. */
+.message.compact .message-body {
+  padding-left: 48px;
+}
+
+.message.compact .message-header {
+  display: inline-flex;
+  margin-left: -48px;
+  margin-right: 6px;
+}
+
+.message.compact .message-content {
+  display: inline;
+}
+
+.message-compact-time {
+  display: inline-block;
+  min-width: 40px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .message-edited {
@@ -3989,4 +4024,17 @@ button.tag-chip:hover {
   border-radius: 8px;
   background: #000;
   object-fit: cover;
+}
+
+/* ------------------------------------------------------------ appearance */
+
+.appearance-preview {
+  flex: none;
+  margin-bottom: 24px;
+  padding: 2px 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-main);
+  overflow: hidden;
+  pointer-events: none;
 }

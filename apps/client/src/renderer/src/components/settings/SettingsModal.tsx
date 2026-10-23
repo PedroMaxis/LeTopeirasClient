@@ -7,6 +7,7 @@ import { AdminChannels } from './AdminChannels';
 import { AdminInvites } from './AdminInvites';
 import { AdminMembers } from './AdminMembers';
 import { AdminRoles } from './AdminRoles';
+import { AppearanceSettings } from './AppearanceSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ProfileSettings } from './ProfileSettings';
 import { StreamSettings } from './StreamSettings';
@@ -15,6 +16,7 @@ import { VoiceSettings } from './VoiceSettings';
 export type SettingsPage =
   | 'account'
   | 'profile'
+  | 'appearance'
   | 'voice'
   | 'stream'
   | 'notifications'
@@ -65,6 +67,7 @@ export function SettingsModal({
           {item('account', 'Minha conta')}
           {item('profile', 'Perfil')}
           <div className="settings-nav-section">APLICATIVO</div>
+          {item('appearance', 'Aparência')}
           {item('voice', 'Voz e áudio')}
           {item('stream', 'Transmissão')}
           {item('notifications', 'Notificações')}
@@ -91,6 +94,7 @@ export function SettingsModal({
         <div className="settings-page">
           {page === 'account' && <AccountSettings />}
           {page === 'profile' && <ProfileSettings />}
+          {page === 'appearance' && <AppearanceSettings />}
           {page === 'voice' && <VoiceSettings />}
           {page === 'stream' && <StreamSettings />}
           {page === 'notifications' && <NotificationSettings />}

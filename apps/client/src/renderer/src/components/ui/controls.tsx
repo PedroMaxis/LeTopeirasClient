@@ -107,3 +107,38 @@ export function FieldLabel({ children, htmlFor }: { children: ReactNode; htmlFor
     </label>
   );
 }
+
+/** A labeled range input with its value on the right ("Volume 80%"). */
+export function Slider(props: {
+  id: string;
+  label: string;
+  value: number;
+  max: number;
+  min?: number;
+  unit?: string;
+  onChange(value: number): void;
+}) {
+  const min = props.min ?? 0;
+  const unit = props.unit ?? '%';
+  return (
+    <div className="field">
+      <FieldLabel htmlFor={props.id}>
+        {props.label}{' '}
+        <span className="slider-value">
+          {props.value}
+          {unit}
+        </span>
+      </FieldLabel>
+      <input
+        id={props.id}
+        type="range"
+        className="slider"
+        min={min}
+        max={props.max}
+        value={props.value}
+        style={{ ['--fill' as string]: `${((props.value - min) / (props.max - min)) * 100}%` }}
+        onChange={(e) => props.onChange(Number(e.target.value))}
+      />
+    </div>
+  );
+}

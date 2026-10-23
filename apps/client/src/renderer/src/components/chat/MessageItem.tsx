@@ -3,6 +3,7 @@ import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeira
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
 import { hideSpoilers, renderMarkdown } from '../../lib/markdown';
+import { settings } from '../../lib/settings';
 import { Store, useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
@@ -33,7 +34,7 @@ export const snippetOf = (content: string) =>
 
 interface Props {
   message: Message;
-  /** Same author as the previous message: no avatar or name. */
+  /** Same author as the previous message: no avatar or name (compact mode keeps the name). */
   grouped: boolean;
 }
 
@@ -45,6 +46,8 @@ export function MessageItem({ message, grouped }: Props) {
   const users = useStore(chat.store, (s) => s.users);
   const channel = useStore(chat.store, (s) => s.channels.find((c) => c.id === message.channelId));
   const editing = useStore(editingMessage, (s) => s.id === message.id);
+  // Compact: one line per message, "14:32 Nome texto", with no avatar.
+  const compact = useStore(settings, (s) => s.compactMode);
   const setEditing = (on: boolean) => editingMessage.set({ id: on ? message.id : null });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [picker, setPicker] = useState<CSSProperties | null>(null);
@@ -78,10 +81,10 @@ export function MessageItem({ message, grouped }: Props) {
 
   return (
     <div
-      className={`message ${grouped ? 'grouped' : ''} ${editing ? 'editing' : ''} ${mentionsMe ? 'mentioned' : ''} ${picker ? 'picking' : ''}`}
+      className={`message ${compact ? 'compact' : ''} ${grouped ? 'grouped' : ''} ${editing ? 'editing' : ''} ${mentionsMe ? 'mentioned' : ''} ${picker ? 'picking' : ''}`}
       data-message-id={message.id}
     >
-      {grouped ? (
+      {compact ? null : grouped ? (
         <span className="message-gutter-time" title={formatFull(message.createdAt)}>
           {formatTime(message.createdAt)}
         </span>
@@ -93,8 +96,11 @@ export function MessageItem({ message, grouped }: Props) {
       {card.card}
       <div className="message-body">
         {message.replyToId !== null && <ReplyQuote message={message} />}
-        {!grouped && (
-          <div className="message-header">
+        {compact ? (
+          <span className="message-header">
+            <span className="message-compact-time" title={formatFull(message.createdAt)}>
+              {formatTime(message.createdAt)}
+            </span>
             <button
               type="button"
               className="message-author"
@@ -103,10 +109,23 @@ export function MessageItem({ message, grouped }: Props) {
             >
               {author?.displayName ?? 'Alguém'}
             </button>
-            <span className="message-time" title={formatFull(message.createdAt)}>
-              {formatTimestamp(message.createdAt)}
-            </span>
-          </div>
+          </span>
+        ) : (
+          !grouped && (
+            <div className="message-header">
+              <button
+                type="button"
+                className="message-author"
+                style={{ color: nameColor(author, roles) }}
+                onClick={card.open(message.authorId)}
+              >
+                {author?.displayName ?? 'Alguém'}
+              </button>
+              <span className="message-time" title={formatFull(message.createdAt)}>
+                {formatTimestamp(message.createdAt)}
+              </span>
+            </div>
+          )
         )}
         {editing && channel ? (
           <EditBox
@@ -318,14 +337,24 @@ function EditBox(props: {
 export function PendingItem({ pending }: { pending: PendingMessage }) {
   const { chat } = useSession();
   const me = useStore(chat.store, (s) => s.me);
+  const compact = useStore(settings, (s) => s.compactMode);
   return (
-    <div className={`message pending ${pending.failed ? 'failed' : ''}`}>
-      <Avatar user={me ?? undefined} size={40} />
+    <div
+      className={`message pending ${compact ? 'compact' : ''} ${pending.failed ? 'failed' : ''}`}
+    >
+      {!compact && <Avatar user={me ?? undefined} size={40} />}
       <div className="message-body">
-        <div className="message-header">
-          <span className="message-author">{me?.displayName}</span>
-          <span className="message-time">{formatTimestamp(pending.createdAt)}</span>
-        </div>
+        {compact ? (
+          <span className="message-header">
+            <span className="message-compact-time">{formatTime(pending.createdAt)}</span>
+            <span className="message-author">{me?.displayName}</span>
+          </span>
+        ) : (
+          <div className="message-header">
+            <span className="message-author">{me?.displayName}</span>
+            <span className="message-time">{formatTimestamp(pending.createdAt)}</span>
+          </div>
+        )}
         {pending.previews.length > 0 && (
           <div className="attachments grid">
             {pending.previews.map((src) => (

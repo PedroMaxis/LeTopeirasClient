@@ -5,7 +5,7 @@ import { levelFromDb, startMicMeter } from '../../lib/audio';
 import { settings, updateSettings, type Settings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { showToast } from '../../lib/toast';
-import { FieldLabel, ToggleRow } from '../ui/controls';
+import { FieldLabel, Slider, ToggleRow } from '../ui/controls';
 
 const METER_SEGMENTS = 30;
 
@@ -59,40 +59,6 @@ function DeviceSelect(props: {
           </option>
         ))}
       </select>
-    </div>
-  );
-}
-
-function Slider(props: {
-  id: string;
-  label: string;
-  value: number;
-  max: number;
-  min?: number;
-  unit?: string;
-  onChange(value: number): void;
-}) {
-  const min = props.min ?? 0;
-  const unit = props.unit ?? '%';
-  return (
-    <div className="field">
-      <FieldLabel htmlFor={props.id}>
-        {props.label}{' '}
-        <span className="slider-value">
-          {props.value}
-          {unit}
-        </span>
-      </FieldLabel>
-      <input
-        id={props.id}
-        type="range"
-        className="slider"
-        min={min}
-        max={props.max}
-        value={props.value}
-        style={{ ['--fill' as string]: `${((props.value - min) / (props.max - min)) * 100}%` }}
-        onChange={(e) => props.onChange(Number(e.target.value))}
-      />
     </div>
   );
 }

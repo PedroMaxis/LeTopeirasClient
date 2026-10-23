@@ -30,6 +30,12 @@ const settingsSchema = z.object({
   showMembers: z.boolean().default(true),
   /** Startup animation (components/Intro.tsx). */
   introAnimation: z.boolean().default(true),
+  /** Chat text size in px (lib/appearance.ts). */
+  chatFontSize: z.number().int().min(12).max(20).default(15),
+  /** Space above each new group of messages, in px. */
+  messageSpacing: z.number().int().min(0).max(24).default(14),
+  /** One line per message ("14:32 Nome texto"), no avatars. */
+  compactMode: z.boolean().default(false),
   /** Text chat panel beside the voice stage. */
   voiceChat: z.boolean().default(false),
   /** Voice gate: below this level (dBFS) the mic sends silence. Off = the browser decides. */
