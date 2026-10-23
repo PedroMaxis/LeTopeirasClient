@@ -13,6 +13,7 @@ import { registerSystemAudio } from './system-audio';
 import { createTray, showWindow } from './tray';
 import { registerVoiceControls } from './voice-controls';
 import { registerUpdater } from './updater';
+import { restoreWindowState, trackWindowState } from './window-state';
 
 // Remote voices must play as soon as they arrive, without waiting for a click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -88,12 +89,16 @@ function registerIpc(getWindow: () => BrowserWindow | null): void {
   });
 }
 
+const MIN_SIZE = { width: 940, height: 560 };
+
 function createMainWindow(): BrowserWindow {
+  const saved = restoreWindowState(MIN_SIZE);
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
-    minWidth: 940,
-    minHeight: 560,
+    ...saved.bounds,
+    minWidth: MIN_SIZE.width,
+    minHeight: MIN_SIZE.height,
     show: false,
     // The title bar is drawn by the renderer (see TitleBar.tsx).
     frame: false,
@@ -111,8 +116,15 @@ function createMainWindow(): BrowserWindow {
   });
 
   win.once('ready-to-show', () => {
-    if (!startHidden) win.show();
+    // maximize() also shows the window, so a hidden start waits for the first show.
+    if (startHidden) {
+      if (saved.maximized) win.once('show', () => win.maximize());
+      return;
+    }
+    if (saved.maximized) win.maximize();
+    win.show();
   });
+  trackWindowState(win);
   // A mention flashed the taskbar button; looking at the window is enough.
   win.on('focus', () => win.flashFrame(false));
   win.on('close', (event) => {
