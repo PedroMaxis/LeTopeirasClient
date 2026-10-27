@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from 'react';
 import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeiras/shared';
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
@@ -9,7 +9,9 @@ import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { useMemberCard } from '../MemberCard';
+import { usePersonMenu } from '../PersonMenu';
 import { Avatar } from '../ui/Avatar';
+import { useContextMenu } from '../ui/ContextMenu';
 import { IconButton } from '../ui/controls';
 import { Attachments } from './Attachments';
 import { Embeds } from './Embeds';
@@ -24,6 +26,9 @@ export const editingMessage = new Store<{ id: number | null }>({ id: null });
 export const replyingTo = new Store<{
   target: { channelId: number; messageId: number; authorId: number; ping: boolean } | null;
 }>({ target: null });
+
+/** The reaction row at the top of a message's right-click menu. */
+const QUICK_REACTIONS = ['👍', '😂', '❤️', '😮'];
 
 /** One line of plain text from a message, for reply quotes (spoilers stay hidden). */
 export const snippetOf = (content: string) =>
@@ -52,6 +57,8 @@ export function MessageItem({ message, grouped }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [picker, setPicker] = useState<CSSProperties | null>(null);
   const card = useMemberCard();
+  const menu = useContextMenu();
+  const personMenu = usePersonMenu();
 
   const mine = message.authorId === me?.id;
   const mentionsMe =
@@ -79,21 +86,91 @@ export function MessageItem({ message, grouped }: Props) {
   };
   const canDelete = mine || me?.isAdmin === true;
 
+  const reply = () =>
+    replyingTo.set({
+      target: {
+        channelId: message.channelId,
+        messageId: message.id,
+        authorId: message.authorId,
+        ping: !mine,
+      },
+    });
+  const remove = (withoutAsking: boolean) => {
+    if (withoutAsking) chat.deleteMessage(message.id);
+    else setConfirmDelete(true);
+  };
+
+  const onContextMenu = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    // Text fields and selected text get main's native menu (spelling, copy).
+    if (target.closest('textarea, input') || window.getSelection()?.toString()) return;
+    const link = target.closest('a')?.href;
+    const at = { x: event.clientX, y: event.clientY };
+    menu.open(event, [
+      {
+        key: 'reactions',
+        render: (close) => (
+          <div className="context-reactions">
+            {QUICK_REACTIONS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                title={`Reagir com ${emoji}`}
+                onClick={() => {
+                  close();
+                  chat.toggleReaction(message.channelId, message.id, emoji);
+                }}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        ),
+      },
+      { label: 'Adicionar reação', onSelect: () => setPicker(pickerAt(at.x, at.y)) },
+      { separator: true },
+      link && { label: 'Abrir link', onSelect: () => window.open(link) },
+      link && { label: 'Copiar link', onSelect: () => void navigator.clipboard.writeText(link) },
+      link && { separator: true },
+      { label: 'Responder', onSelect: reply },
+      mine && message.content && { label: 'Editar', onSelect: () => setEditing(true) },
+      message.content && {
+        label: 'Copiar texto',
+        onSelect: () => void navigator.clipboard.writeText(message.content),
+      },
+      canDelete && { separator: true },
+      canDelete && {
+        label: 'Apagar mensagem',
+        hint: 'Shift: sem perguntar',
+        danger: true,
+        onSelect: remove,
+      },
+    ]);
+  };
+
   return (
     <div
       className={`message ${compact ? 'compact' : ''} ${grouped ? 'grouped' : ''} ${editing ? 'editing' : ''} ${mentionsMe ? 'mentioned' : ''} ${picker ? 'picking' : ''}`}
       data-message-id={message.id}
+      onContextMenu={onContextMenu}
     >
       {compact ? null : grouped ? (
         <span className="message-gutter-time" title={formatFull(message.createdAt)}>
           {formatTime(message.createdAt)}
         </span>
       ) : (
-        <button type="button" className="message-avatar" onClick={card.open(message.authorId)}>
+        <button
+          type="button"
+          className="message-avatar"
+          onClick={card.open(message.authorId)}
+          onContextMenu={personMenu.open(message.authorId)}
+        >
           <Avatar user={author} size={40} />
         </button>
       )}
       {card.card}
+      {menu.menu}
+      {personMenu.menu}
       <div className="message-body">
         {message.replyToId !== null && <ReplyQuote message={message} />}
         {compact ? (
@@ -106,6 +183,7 @@ export function MessageItem({ message, grouped }: Props) {
               className="message-author"
               style={{ color: nameColor(author, roles) }}
               onClick={card.open(message.authorId)}
+              onContextMenu={personMenu.open(message.authorId)}
             >
               {author?.displayName ?? 'Alguém'}
             </button>
@@ -118,6 +196,7 @@ export function MessageItem({ message, grouped }: Props) {
                 className="message-author"
                 style={{ color: nameColor(author, roles) }}
                 onClick={card.open(message.authorId)}
+                onContextMenu={personMenu.open(message.authorId)}
               >
                 {author?.displayName ?? 'Alguém'}
               </button>
@@ -164,21 +243,7 @@ export function MessageItem({ message, grouped }: Props) {
             label="Reagir"
             onClick={(e) => setPicker(pickerPosition(e.currentTarget))}
           />
-          <IconButton
-            icon="reply"
-            size={16}
-            label="Responder"
-            onClick={() =>
-              replyingTo.set({
-                target: {
-                  channelId: message.channelId,
-                  messageId: message.id,
-                  authorId: message.authorId,
-                  ping: !mine,
-                },
-              })
-            }
-          />
+          <IconButton icon="reply" size={16} label="Responder" onClick={reply} />
           {/* Only the text can be edited, so a message that is only images has nothing to edit. */}
           {mine && message.content && (
             <IconButton icon="pencil" size={16} label="Editar" onClick={() => setEditing(true)} />
@@ -189,10 +254,7 @@ export function MessageItem({ message, grouped }: Props) {
               size={16}
               label="Apagar (Shift+clique apaga sem perguntar)"
               danger
-              onClick={(e) => {
-                if (e.shiftKey) chat.deleteMessage(message.id);
-                else setConfirmDelete(true);
-              }}
+              onClick={(e) => remove(e.shiftKey)}
             />
           )}
         </div>
@@ -234,6 +296,13 @@ function pickerPosition(button: HTMLElement): CSSProperties {
   const r = button.getBoundingClientRect();
   const left = Math.max(8, Math.min(r.right - PICKER_WIDTH, window.innerWidth - PICKER_WIDTH - 8));
   const top = r.top - PICKER_HEIGHT - 8 > 38 ? r.top - PICKER_HEIGHT - 8 : r.bottom + 8;
+  return { position: 'fixed', left, top, right: 'auto', bottom: 'auto' };
+}
+
+/** The reaction picker at a point (where the message was right-clicked), inside the window. */
+function pickerAt(x: number, y: number): CSSProperties {
+  const left = Math.max(8, Math.min(x, window.innerWidth - PICKER_WIDTH - 8));
+  const top = Math.max(38, Math.min(y, window.innerHeight - PICKER_HEIGHT - 8));
   return { position: 'fixed', left, top, right: 'auto', bottom: 'auto' };
 }
 
@@ -338,10 +407,19 @@ export function PendingItem({ pending }: { pending: PendingMessage }) {
   const { chat } = useSession();
   const me = useStore(chat.store, (s) => s.me);
   const compact = useStore(settings, (s) => s.compactMode);
+  const menu = useContextMenu();
   return (
     <div
       className={`message pending ${compact ? 'compact' : ''} ${pending.failed ? 'failed' : ''}`}
+      onContextMenu={(event) =>
+        pending.failed &&
+        menu.open(event, [
+          { label: 'Tentar de novo', onSelect: () => chat.retryMessage(pending.nonce) },
+          { label: 'Descartar', danger: true, onSelect: () => chat.discardMessage(pending.nonce) },
+        ])
+      }
     >
+      {menu.menu}
       {!compact && <Avatar user={me ?? undefined} size={40} />}
       <div className="message-body">
         {compact ? (

@@ -26,8 +26,10 @@ export function useMemberCard() {
     event.stopPropagation();
     setTarget({ userId, anchor: event.currentTarget.getBoundingClientRect() });
   };
+  /** Opens next to a point, e.g. where a right-click menu was. */
+  const openAt = (userId: number, anchor: DOMRect) => setTarget({ userId, anchor });
   const card = target ? <MemberCard target={target} onClose={() => setTarget(null)} /> : null;
-  return { open, card };
+  return { open, openAt, card };
 }
 
 function MemberCard({ target, onClose }: { target: Target; onClose(): void }) {

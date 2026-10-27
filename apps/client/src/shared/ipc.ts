@@ -19,6 +19,7 @@ export const IpcChannel = {
   SessionRemember: 'session:remember',
   VoiceResumeState: 'voice:resume-state',
   VoiceTakeResume: 'voice:take-resume',
+  SpellcheckSet: 'spellcheck:set',
   SystemAudioStatus: 'system-audio:status',
   SystemAudioStart: 'system-audio:start',
   SystemAudioStop: 'system-audio:stop',
@@ -183,6 +184,9 @@ export interface LeTopeirasApi {
   setVoiceResume(state: VoiceResume | null): Promise<void>;
   /** After main reloaded a crashed renderer: the room it was in, once; otherwise null. */
   takeVoiceResume(): Promise<VoiceResume | null>;
+
+  /** Turns the spellchecker (red underline + suggestions in the right-click menu) on or off. */
+  setSpellcheck(enabled: boolean): Promise<void>;
 
   /** Version of an update that is downloaded and waiting for a restart, or null. */
   getReadyUpdate(): Promise<string | null>;

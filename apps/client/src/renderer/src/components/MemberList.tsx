@@ -3,6 +3,7 @@ import { canAccess, topRole } from '../lib/roles';
 import { useStore } from '../lib/store';
 import { useSession } from '../state/session';
 import { useMemberCard } from './MemberCard';
+import { usePersonMenu } from './PersonMenu';
 import { Avatar } from './ui/Avatar';
 
 const byName = (a: User, b: User) => a.displayName.localeCompare(b.displayName, 'pt-BR');
@@ -17,6 +18,7 @@ export function MemberList() {
   const roles = useStore(chat.store, (s) => s.roles);
   const me = useStore(chat.store, (s) => s.me);
   const card = useMemberCard();
+  const personMenu = usePersonMenu();
 
   const all = Object.values(users).sort(byName);
   const online = all.filter((u) => presence.has(u.id));
@@ -53,7 +55,12 @@ export function MemberList() {
             const idle = presence.get(user.id) === 'idle';
             const sub = activity.get(user.id) ?? (idle ? 'Ausente' : null);
             return (
-              <div key={user.id} className="member" onClick={card.open(user.id)}>
+              <div
+                key={user.id}
+                className="member"
+                onClick={card.open(user.id)}
+                onContextMenu={personMenu.open(user.id)}
+              >
                 <Avatar user={user} size={32} status={idle ? 'idle' : 'online'} />
                 <div className="member-names">
                   <div className="member-name" style={{ color: topRole(user, roles)?.color }}>
@@ -68,7 +75,12 @@ export function MemberList() {
       ))}
       {offline.length > 0 && <div className="member-section">OFFLINE — {offline.length}</div>}
       {offline.map((user) => (
-        <div key={user.id} className="member offline" onClick={card.open(user.id)}>
+        <div
+          key={user.id}
+          className="member offline"
+          onClick={card.open(user.id)}
+          onContextMenu={personMenu.open(user.id)}
+        >
           <Avatar user={user} size={32} status="offline" />
           <div className="member-name" style={{ color: topRole(user, roles)?.color }}>
             {user.displayName}
@@ -76,6 +88,7 @@ export function MemberList() {
         </div>
       ))}
       {card.card}
+      {personMenu.menu}
     </aside>
   );
 }

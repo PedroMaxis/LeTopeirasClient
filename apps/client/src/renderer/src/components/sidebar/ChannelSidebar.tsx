@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type MouseEvent } from 'react';
 import type { Category, Channel, VoiceParticipant } from '@letopeiras/shared';
 import { byTypeThenPosition } from '../../lib/channels';
 import { canAccess, nameColor } from '../../lib/roles';
@@ -6,11 +6,12 @@ import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
 import type { LayoutActions, View } from '../MainLayout';
 import { Avatar } from '../ui/Avatar';
+import { useContextMenu } from '../ui/ContextMenu';
 import { Icon } from '../ui/Icon';
 import { Mole, type MoleHandle } from '../ui/Mole';
 import { UserPanel } from './UserPanel';
 import { VoicePanel } from './VoicePanel';
-import { useVolumeMenu } from '../voice/VolumeMenu';
+import { usePersonMenu } from '../PersonMenu';
 
 interface Props {
   view: View | null;
@@ -107,7 +108,17 @@ function CategorySection(props: {
   const { chat, voice } = useSession();
   const readStates = useStore(chat.store, (s) => s.readStates);
   const inVoice = useStore(voice.store, (s) => s.channelId);
+  const me = useStore(chat.store, (s) => s.me);
+  const menu = useContextMenu();
   const { category, channels, collapsed, view } = props;
+
+  const unreadHere = channels.filter(
+    (c) =>
+      c.type === 'text' &&
+      canAccess(me, c) &&
+      c.lastMessageId !== null &&
+      c.lastMessageId > (readStates[c.id] ?? 0),
+  );
 
   // A collapsed category still shows the open, unread and joined channels.
   const visible = collapsed
@@ -121,7 +132,23 @@ function CategorySection(props: {
 
   return (
     <div className="category">
-      <div className="category-header">
+      {menu.menu}
+      <div
+        className="category-header"
+        onContextMenu={(event) =>
+          menu.open(event, [
+            {
+              label: 'Marcar categoria como lida',
+              disabled: unreadHere.length === 0,
+              onSelect: () => unreadHere.forEach((c) => chat.markRead(c.id)),
+            },
+            {
+              label: collapsed ? 'Expandir categoria' : 'Recolher categoria',
+              onSelect: props.onToggle,
+            },
+          ])
+        }
+      >
         <button
           type="button"
           className={`section-header ${collapsed ? 'collapsed' : ''}`}
@@ -177,13 +204,31 @@ function ChannelItem({
     channel.lastMessageId > (readStates[channel.id] ?? 0);
 
   const open = () => actions.openChannel(channel);
+  const menu = useContextMenu();
+  const hasUnread =
+    channel.lastMessageId !== null && channel.lastMessageId > (readStates[channel.id] ?? 0);
+  const onContextMenu = (event: MouseEvent) =>
+    menu.open(event, [
+      kind === 'text' && {
+        label: 'Marcar como lido',
+        disabled: locked || !hasUnread,
+        onSelect: () => chat.markRead(channel.id),
+      },
+      kind === 'voice' && {
+        label: inVoice === channel.id ? 'Você está neste canal' : 'Entrar no canal',
+        disabled: locked || inVoice === channel.id,
+        onSelect: open,
+      },
+    ]);
 
   return (
     <div>
+      {menu.menu}
       <button
         type="button"
         className={`channel-item ${active ? 'active' : ''} ${unread ? 'unread' : ''} ${locked ? 'locked' : ''}`}
         onClick={open}
+        onContextMenu={onContextMenu}
         title={
           locked
             ? 'Canal privado'
@@ -233,7 +278,7 @@ function VoiceMember({
     voice.store,
     (s) => s.channelId === channelId && s.speaking.has(String(participant.userId)),
   );
-  const volumeMenu = useVolumeMenu();
+  const personMenu = usePersonMenu();
 
   const watchers = (voiceStates ?? []).filter((v) =>
     v.watching.includes(participant.userId),
@@ -243,9 +288,9 @@ function VoiceMember({
   return (
     <div
       className={`voice-member ${speaking ? 'speaking' : ''}`}
-      onContextMenu={volumeMenu.open(participant.userId, user?.displayName ?? '')}
+      onContextMenu={personMenu.open(participant.userId, { inVoice: true })}
     >
-      {volumeMenu.menu}
+      {personMenu.menu}
       <Avatar user={user} size={22} speaking={speaking} />
       <span className="voice-member-name" style={{ color: nameColor(user, roles) }}>
         {user?.displayName ?? '…'}

@@ -20,10 +20,10 @@ import { useSession } from '../../state/session';
 import { isWatching } from '../../state/voice';
 import { ChatPanel } from '../chat/ChatPanel';
 import type { LayoutActions } from '../MainLayout';
+import { usePersonMenu } from '../PersonMenu';
 import { Avatar } from '../ui/Avatar';
 import { IconButton } from '../ui/controls';
 import { Icon, type IconName } from '../ui/Icon';
-import { useVolumeMenu } from './VolumeMenu';
 
 interface Share {
   participant: Participant;
@@ -182,7 +182,7 @@ export function VoiceStage({
   const users = useStore(chat.store, (s) => s.users);
   const voiceState = useStore(chat.store, (s) => s.voice[channel.id]);
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const volumeMenu = useVolumeMenu();
+  const personMenu = usePersonMenu();
   // State, not a ref: the grid element comes and goes with focus mode.
   const [grid, setGrid] = useState<HTMLDivElement | null>(null);
 
@@ -263,7 +263,7 @@ export function VoiceStage({
               ? () => setFocusedId(`c-${p.identity}`)
               : undefined
         }
-        onContextMenu={volumeMenu.open(Number(p.identity), nameOf(p))}
+        onContextMenu={personMenu.open(Number(p.identity), { inVoice: true })}
       />
     );
   };
@@ -348,7 +348,7 @@ export function VoiceStage({
             </div>
           )}
 
-          {volumeMenu.menu}
+          {personMenu.menu}
           <div className="stage-controls">
             <StageButton
               icon={muted || deafened ? 'micOff' : 'mic'}

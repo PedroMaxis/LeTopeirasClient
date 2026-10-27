@@ -36,6 +36,8 @@ const settingsSchema = z.object({
   messageSpacing: z.number().int().min(0).max(24).default(14),
   /** One line per message ("14:32 Nome texto"), no avatars. */
   compactMode: z.boolean().default(false),
+  /** Red underline and suggestions in text fields (main/context-menu.ts). */
+  spellcheck: z.boolean().default(true),
   /** Text chat panel beside the voice stage. */
   voiceChat: z.boolean().default(false),
   /** Voice gate: below this level (dBFS) the mic sends silence. Off = the browser decides. */

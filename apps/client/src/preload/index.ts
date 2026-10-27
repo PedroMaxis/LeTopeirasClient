@@ -46,6 +46,7 @@ const api: LeTopeirasApi = {
   setTrayVoiceState: (state) => ipcRenderer.invoke(IpcChannel.TrayVoiceState, state),
   setVoiceResume: (state) => ipcRenderer.invoke(IpcChannel.VoiceResumeState, state),
   takeVoiceResume: () => ipcRenderer.invoke(IpcChannel.VoiceTakeResume),
+  setSpellcheck: (enabled) => ipcRenderer.invoke(IpcChannel.SpellcheckSet, enabled),
   getReadyUpdate: () => ipcRenderer.invoke(IpcChannel.UpdateGetReady),
   onUpdateReady: (listener) => {
     const handler = (_event: unknown, version: string) => listener(version);

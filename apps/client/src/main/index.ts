@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session, shell 
 import { APP_ID } from '@letopeiras/shared';
 import windowIconPath from '../../resources/tray.ico?asset';
 import { IpcChannel, type AppInfo } from '../shared/ipc';
+import { attachContextMenu, registerSpellcheck } from './context-menu';
 import { registerDiagnostics, startCrashReporter } from './diagnostics';
 import { configurePermissions } from './permissions';
 import { assertTrustedSender, rendererDevUrl, rendererFile } from './renderer';
@@ -126,6 +127,7 @@ function createMainWindow(): BrowserWindow {
     win.show();
   });
   trackWindowState(win);
+  attachContextMenu(win);
   // A mention flashed the taskbar button; looking at the window is enough.
   win.on('focus', () => win.flashFrame(false));
   win.on('close', (event) => {
@@ -179,6 +181,7 @@ if (!app.requestSingleInstanceLock()) {
     registerPushToTalk();
     registerVoiceControls();
     registerVoiceResume();
+    registerSpellcheck();
     registerIpc(() => mainWindow);
     mainWindow = createMainWindow();
     createTray(mainWindow, () => app.quit());

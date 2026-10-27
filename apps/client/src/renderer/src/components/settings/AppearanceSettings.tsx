@@ -41,6 +41,12 @@ export function AppearanceSettings() {
         checked={s.compactMode}
         onChange={(compactMode) => updateSettings({ compactMode })}
       />
+      <ToggleRow
+        label="Corretor ortográfico"
+        description="Sublinha palavras erradas ao escrever. Clique com o botão direito numa delas para ver as sugestões."
+        checked={s.spellcheck}
+        onChange={(spellcheck) => updateSettings({ spellcheck })}
+      />
       <div className="settings-divider" />
       <ToggleRow
         label="Animação de abertura"
