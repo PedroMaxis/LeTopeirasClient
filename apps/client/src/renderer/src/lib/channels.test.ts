@@ -1,6 +1,6 @@
-import type { Category, Channel } from '@letopeiras/shared';
+import type { Category, Channel, Message } from '@letopeiras/shared';
 import { describe, expect, it } from 'vitest';
-import { isUnread, matchScore, normalize, sidebarOrder } from './channels';
+import { isUnread, matchScore, normalize, sidebarOrder, summarizeUnread } from './channels';
 
 const channel = (id: number, name: string, extra: Partial<Channel> = {}): Channel => ({
   id,
@@ -55,5 +55,36 @@ describe('isUnread', () => {
     expect(isUnread(channel(1, 'a', { lastMessageId: 10 }), { 1: 9 })).toBe(true);
     expect(isUnread(channel(1, 'a', { lastMessageId: 10 }), { 1: 10 })).toBe(false);
     expect(isUnread(channel(1, 'a', { lastMessageId: 10, type: 'voice' }), {})).toBe(false);
+  });
+});
+
+describe('summarizeUnread', () => {
+  const msg = (id: number, authorId: number) => ({ id, authorId }) as Message;
+  const list = [msg(10, 2), msg(11, 1), msg(12, 2), msg(13, 3)];
+
+  it("counts others' messages after the marker and finds the first", () => {
+    const summary = summarizeUnread(list, true, 10, 1);
+    expect(summary.count).toBe(2);
+    expect(summary.first?.id).toBe(12);
+    expect(summary.more).toBe(false);
+  });
+
+  it('says "more" while older pages hide the marker', () => {
+    const summary = summarizeUnread(list, true, 5, 1);
+    expect(summary.count).toBe(3);
+    expect(summary.first).toBeUndefined();
+    expect(summary.more).toBe(true);
+  });
+
+  it('knows the first unread once the channel start is loaded', () => {
+    const summary = summarizeUnread(list, false, 5, 1);
+    expect(summary.first?.id).toBe(10);
+    expect(summary.more).toBe(false);
+  });
+
+  it('is empty when nothing is unread', () => {
+    const summary = summarizeUnread(list, true, Number.POSITIVE_INFINITY, 1);
+    expect(summary.count).toBe(0);
+    expect(summary.first).toBeUndefined();
   });
 });

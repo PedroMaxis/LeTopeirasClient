@@ -8,7 +8,8 @@ import {
   type Ref,
 } from 'react';
 import type { Channel, Message } from '@letopeiras/shared';
-import { formatDay, sameDay } from '../../lib/format';
+import { summarizeUnread } from '../../lib/channels';
+import { formatDay, formatTime, sameDay } from '../../lib/format';
 import { showToast } from '../../lib/toast';
 import { useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
@@ -58,6 +59,9 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
   // than a screen away. They drive the "Ir para o fim" bar.
   const [awayFrom, setAwayFrom] = useState<number | null>(null);
   const [far, setFar] = useState(false);
+  // The "NOVAS" divider has scrolled above the screen, and the unread bar was dismissed.
+  const [dividerAbove, setDividerAbove] = useState(false);
+  const [unreadDismissed, setUnreadDismissed] = useState(false);
 
   useEffect(() => {
     if (!entry) void chat.loadMessages(channel.id);
@@ -66,6 +70,15 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
   const markReadIfVisible = useCallback(() => {
     if (atBottom.current && document.hasFocus()) chat.markRead(channel.id);
   }, [chat, channel.id]);
+
+  const measureDivider = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const divider = el.querySelector('.new-divider');
+    setDividerAbove(
+      divider !== null && divider.getBoundingClientRect().bottom < el.getBoundingClientRect().top,
+    );
+  }, []);
 
   // New messages keep us pinned to the bottom; older pages keep the visible message in place.
   useLayoutEffect(() => {
@@ -105,10 +118,11 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
     const observer = new ResizeObserver(() => {
       const el = scroller.current;
       if (el && atBottom.current) el.scrollTop = el.scrollHeight;
+      measureDivider();
     });
     observer.observe(inner);
     return () => observer.disconnect();
-  }, []);
+  }, [measureDivider]);
 
   // Reply quotes and search results: scroll to a message, loading older pages if needed.
   useEffect(() => {
@@ -159,6 +173,31 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
   }, []);
   useImperativeHandle(ref, () => ({ jumpToBottom }), [jumpToBottom]);
 
+  // The unread bar's text: load older pages until the divider exists, then scroll to it.
+  const goToUnread = async () => {
+    const deadline = Date.now() + JUMP_TIMEOUT_MS;
+    for (let pages = 0; Date.now() < deadline;) {
+      const current = chat.store.get().messages[channel.id];
+      if (!current || !current.hasMore || (current.messages[0]?.id ?? 0) <= readMarker) break;
+      if (current.loading) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        continue;
+      }
+      if (pages++ >= MAX_JUMP_PAGES) break;
+      await chat.loadMessages(channel.id);
+      await nextFrame();
+      await nextFrame();
+    }
+    scroller.current
+      ?.querySelector('.new-divider')
+      ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  };
+
+  const markAsRead = () => {
+    chat.markRead(channel.id);
+    setUnreadDismissed(true);
+  };
+
   const onScroll = () => {
     const el = scroller.current;
     if (!el) return;
@@ -168,6 +207,7 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
     if (atBottom.current) setAwayFrom(null);
     else if (awayFrom === null) setAwayFrom(messages.at(-1)?.id ?? 0);
     setFar(distance > el.clientHeight);
+    measureDivider();
     if (el.scrollTop < LOAD_MORE_THRESHOLD_PX && entry?.hasMore && !entry.loading) {
       void chat.loadMessages(channel.id);
     }
@@ -175,11 +215,26 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
   };
 
   const firstUnread = messages.find((m) => m.id > readMarker && m.authorId !== me?.id)?.id;
+  const unread = summarizeUnread(messages, entry?.hasMore ?? true, readMarker, me?.id);
+  const showUnreadBar =
+    entry !== undefined && !unreadDismissed && unread.count > 0 && (unread.more || dividerAbove);
   const newCount =
     awayFrom === null ? 0 : messages.filter((m) => m.id > awayFrom && m.authorId !== me?.id).length;
 
   return (
     <div className="messages-wrap">
+      {showUnreadBar && (
+        <div className="unread-bar">
+          <button type="button" className="unread-bar-text" onClick={() => void goToUnread()}>
+            {unread.first
+              ? `${unread.count} ${unread.count === 1 ? 'mensagem nova' : 'mensagens novas'} desde ${formatTime(unread.first.createdAt)}`
+              : `Mais de ${unread.count} mensagens novas`}
+          </button>
+          <button type="button" className="unread-bar-read" onClick={markAsRead}>
+            Marcar como lido
+          </button>
+        </div>
+      )}
       <div className="messages" ref={scroller} onScroll={onScroll}>
         <div className="messages-inner">
           {entry && !entry.hasMore && (

@@ -1,4 +1,4 @@
-import type { Category, Channel } from '@letopeiras/shared';
+import type { Category, Channel, Message } from '@letopeiras/shared';
 
 /** Text channels first, then voice, each by position (like Discord). */
 export const byTypeThenPosition = (a: Channel, b: Channel) =>
@@ -24,6 +24,31 @@ export const isUnread = (channel: Channel, readStates: Record<number, number>) =
   channel.type === 'text' &&
   channel.lastMessageId !== null &&
   channel.lastMessageId > (readStates[channel.id] ?? 0);
+
+export interface UnreadSummary {
+  /** Loaded messages from others after the read marker. */
+  count: number;
+  /** The first of them, once history is loaded back that far. */
+  first: Message | undefined;
+  /** Older pages still hide the start of the unread stretch ("Mais de N"). */
+  more: boolean;
+}
+
+/** What the "novas mensagens" bar says: the unread stretch after `readMarker`, as far as loaded. */
+export function summarizeUnread(
+  messages: readonly Message[],
+  hasMore: boolean,
+  readMarker: number,
+  meId: number | undefined,
+): UnreadSummary {
+  const unread = messages.filter((m) => m.id > readMarker && m.authorId !== meId);
+  const reachedMarker = !hasMore || (messages[0] !== undefined && messages[0].id <= readMarker);
+  return {
+    count: unread.length,
+    first: reachedMarker ? unread[0] : undefined,
+    more: !reachedMarker,
+  };
+}
 
 /** Lowercase without accents, for matching what people type ("jogos" finds "Jógos"). */
 export const normalize = (text: string) =>

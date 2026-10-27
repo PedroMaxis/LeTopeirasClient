@@ -98,11 +98,14 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (mentions.onKeyDown(e)) return;
-    // Esc goes back to the newest messages (the emoji picker closes itself instead).
-    if (e.key === 'Escape' && !emojiOpen) {
-      // Esc first drops the reply, then goes back to the newest messages.
+    // Shift+Esc (mark everything as read) is handled by the layout.
+    if (e.key === 'Escape' && !emojiOpen && !e.shiftKey) {
+      // Esc first drops the reply, then goes to the newest messages and marks the channel read.
       if (reply) cancelReply();
-      else onEscape();
+      else {
+        onEscape();
+        chat.markRead(channel.id);
+      }
     }
     // ↑ in an empty box edits your last message with text, like in Discord.
     if (e.key === 'ArrowUp' && !value && !e.altKey && !e.ctrlKey && !e.shiftKey) {

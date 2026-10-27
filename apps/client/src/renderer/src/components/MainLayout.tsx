@@ -144,6 +144,21 @@ export function MainLayout() {
         setSwitcherOpen((open) => !open);
         return;
       }
+      // Shift+Esc: mark every channel as read, unless a dialog or menu is open.
+      if (e.key === 'Escape' && e.shiftKey && !e.ctrlKey && !e.altKey) {
+        if (
+          settingsPage ||
+          pickerOpen ||
+          switcherOpen ||
+          document.querySelector('[role="dialog"]')
+        ) {
+          return;
+        }
+        e.preventDefault();
+        chat.markAllRead();
+        showToast('Tudo marcado como lido', 'info');
+        return;
+      }
       if (!e.altKey || e.ctrlKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
       if (settingsPage || pickerOpen) return;
       e.preventDefault();
@@ -166,7 +181,7 @@ export function MainLayout() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [chat, currentText, settingsPage, pickerOpen]);
+  }, [chat, currentText, settingsPage, pickerOpen, switcherOpen]);
 
   const actions: LayoutActions = {
     openView,

@@ -11,10 +11,14 @@ import {
   type VoiceParticipant,
 } from '@letopeiras/shared';
 import { errorMessage, type Api } from '../lib/api';
+import { isUnread } from '../lib/channels';
 import { Gateway, type GatewayStatus } from '../lib/gateway';
 import { notifyMessage } from '../lib/notify';
+import { canAccess } from '../lib/roles';
 import { Store } from '../lib/store';
 import { showToast } from '../lib/toast';
+
+const MARK_ALL_READ_MAX = 40;
 
 export interface ChannelMessages {
   /** Oldest → newest. */
@@ -222,6 +226,17 @@ export class ChatClient {
       readStates: { ...s.readStates, [channelId]: last },
       mentionCounts: without(s.mentionCounts, channelId),
     }));
+  }
+
+  /** Marks every channel we can open as read (Shift+Esc). Returns how many had news. */
+  markAllRead(): number {
+    const { me, channels, readStates } = this.store.get();
+    // The gateway allows 60 events per 10 s; stay well under it.
+    const unread = channels
+      .filter((c) => canAccess(me, c) && isUnread(c, readStates))
+      .slice(0, MARK_ALL_READ_MAX);
+    unread.forEach((c) => this.markRead(c.id));
+    return unread.length;
   }
 
   getDraft(channelId: number): string {

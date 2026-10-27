@@ -1344,6 +1344,49 @@ a:hover {
   position: relative;
 }
 
+/* "N mensagens novas desde 14:32": sticks to the top while the NOVAS divider is out of view. */
+.unread-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px 4px 16px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.unread-bar button {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.unread-bar-text {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  text-align: left;
+}
+
+.unread-bar-read {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.unread-bar-read:hover {
+  background: rgba(0, 0, 0, 0.15);
+}
+
 .jump-bar {
   position: absolute;
   bottom: 8px;
