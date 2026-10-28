@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { User } from '@letopeiras/shared';
 import { settings, updateSettings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
@@ -11,6 +12,35 @@ type PreviewUser = Pick<User, 'id' | 'displayName' | 'avatarUrl'>;
 
 /** Someone else in the preview, so the space between groups shows. */
 const MOLE: PreviewUser = { id: 6, displayName: 'Topeira', avatarUrl: null };
+
+/** The window's page zoom (changed with Ctrl+= / Ctrl+-), as a percentage. */
+function ZoomRow() {
+  const [percent, setPercent] = useState(100);
+  useEffect(() => {
+    const show = (factor: number) => setPercent(Math.round(factor * 100));
+    void window.api.getZoom().then(show);
+    return window.api.onZoomChanged(show);
+  }, []);
+  return (
+    <div className="field">
+      <div className="field-label">ZOOM DA JANELA</div>
+      <div className="zoom-row">
+        <span className="zoom-value">{percent} %</span>
+        <button
+          type="button"
+          className="button ghost"
+          disabled={percent === 100}
+          onClick={() => void window.api.resetZoom()}
+        >
+          Voltar a 100 %
+        </button>
+        <span className="field-hint">
+          Ctrl + = aumenta, Ctrl + - diminui, Ctrl + 0 volta ao normal.
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export function AppearanceSettings() {
   const s = useStore(settings, (x) => x);
@@ -35,6 +65,7 @@ export function AppearanceSettings() {
           onChange={(value) => updateSettings({ messageSpacing: Number(value) })}
         />
       </div>
+      <ZoomRow />
       <ToggleRow
         label="Modo compacto"
         description="Uma linha por mensagem, com a hora e o nome na frente e sem foto. Cabe mais conversa na tela."

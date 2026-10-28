@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeWindow, windowStateSchema } from './window-bounds';
+import { placeWindow, stepZoom, windowStateSchema } from './window-bounds';
 
 const MIN = { width: 940, height: 560 };
 const PRIMARY = { x: 0, y: 0, width: 1920, height: 1040 };
@@ -60,5 +60,36 @@ describe('windowStateSchema', () => {
     expect(
       windowStateSchema.safeParse({ x: 0, y: 0, width: 0, height: 10, maximized: false }).success,
     ).toBe(false);
+  });
+});
+
+describe('stepZoom', () => {
+  it('walks the zoom steps up and down', () => {
+    expect(stepZoom(1, 1)).toBe(1.1);
+    expect(stepZoom(1, -1)).toBe(0.9);
+    expect(stepZoom(1.1, 1)).toBe(1.25);
+  });
+
+  it('stops at both ends', () => {
+    expect(stepZoom(2, 1)).toBe(2);
+    expect(stepZoom(0.5, -1)).toBe(0.5);
+  });
+
+  it('snaps an off-step factor to the neighbouring step', () => {
+    expect(stepZoom(1.05, 1)).toBe(1.1);
+    expect(stepZoom(1.05, -1)).toBe(1);
+  });
+});
+
+describe('windowStateSchema zoom', () => {
+  it('defaults to 1 for files saved before zoom existed', () => {
+    const parsed = windowStateSchema.parse({
+      x: 0,
+      y: 0,
+      width: 800,
+      height: 600,
+      maximized: false,
+    });
+    expect(parsed.zoom).toBe(1);
   });
 });

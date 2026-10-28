@@ -16,6 +16,7 @@ import { registerVoiceControls } from './voice-controls';
 import { registerUpdater } from './updater';
 import { registerVoiceResume } from './voice-resume';
 import { restoreWindowState, trackWindowState } from './window-state';
+import { attachZoom } from './zoom';
 
 // Remote voices must play as soon as they arrive, without waiting for a click.
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -126,7 +127,7 @@ function createMainWindow(): BrowserWindow {
     if (saved.maximized) win.maximize();
     win.show();
   });
-  trackWindowState(win);
+  attachZoom(win, saved.zoom, trackWindowState(win));
   attachContextMenu(win);
   // A mention flashed the taskbar button; looking at the window is enough.
   win.on('focus', () => win.flashFrame(false));

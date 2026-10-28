@@ -13,6 +13,7 @@ import { jumpToMessage } from './chat/events';
 import { SearchPanel, type SearchRequest } from './chat/SearchPanel';
 import { MemberList } from './MemberList';
 import { QuickSwitcher } from './QuickSwitcher';
+import { ShortcutsDialog } from './ShortcutsDialog';
 import { ScreenPicker } from './ScreenPicker';
 import { SettingsModal, type SettingsPage } from './settings/SettingsModal';
 import { Mole } from './ui/Mole';
@@ -60,6 +61,7 @@ export function MainLayout() {
   const [settingsPage, setSettingsPage] = useState<SettingsPage | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [search, setSearch] = useState<SearchRequest | null>(null);
 
   // When nothing (or a deleted or now-locked channel) is selected, or we left the voice
@@ -134,6 +136,15 @@ export function MainLayout() {
     openView({ kind: target.type, channelId: target.id });
   };
 
+  // Ctrl+= / Ctrl+- / Ctrl+0 are handled in main; it tells us the new zoom.
+  useEffect(
+    () =>
+      window.api.onZoomChanged((factor) =>
+        showToast(`Zoom: ${Math.round(factor * 100)} %`, 'info'),
+      ),
+    [],
+  );
+
   // "Não perturbe": the tray menu toggles it and shows its checkmark.
   const doNotDisturb = useStore(settings, (s) => s.doNotDisturb);
   useEffect(() => {
@@ -155,6 +166,13 @@ export function MainLayout() {
       if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyK') {
         e.preventDefault();
         setSwitcherOpen((open) => !open);
+        return;
+      }
+      // Ctrl+/: the shortcuts window (it closes itself on the same keys). `key`, not `code`:
+      // on ABNT2 keyboards "/" is not where it is on US ones.
+      if (e.ctrlKey && !e.altKey && e.key === '/') {
+        e.preventDefault();
+        if (!shortcutsOpen && !document.querySelector('[role="dialog"]')) setShortcutsOpen(true);
         return;
       }
       // Shift+Esc: mark every channel as read, unless a dialog or menu is open.
@@ -195,7 +213,7 @@ export function MainLayout() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [chat, currentText, settingsPage, pickerOpen, switcherOpen]);
+  }, [chat, currentText, settingsPage, pickerOpen, switcherOpen, shortcutsOpen]);
 
   const actions: LayoutActions = {
     openView,
@@ -274,6 +292,12 @@ export function MainLayout() {
       </main>
       {settingsPage && (
         <SettingsModal initialPage={settingsPage} onClose={() => setSettingsPage(null)} />
+      )}
+      {shortcutsOpen && (
+        <ShortcutsDialog
+          onClose={() => setShortcutsOpen(false)}
+          onOpenVoiceSettings={() => setSettingsPage('voice')}
+        />
       )}
       {pickerOpen && <ScreenPicker onClose={() => setPickerOpen(false)} />}
       <WhatsNew />

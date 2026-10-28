@@ -4232,3 +4232,78 @@ button.tag-chip:hover {
   overflow: hidden;
   pointer-events: none;
 }
+
+/* ------------------------------------------------------------- shortcuts */
+
+.modal.shortcuts {
+  width: min(560px, calc(100vw - 48px));
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+}
+
+.shortcuts-body {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.shortcuts-group h3 {
+  margin: 16px 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.shortcut-keys {
+  flex-shrink: 0;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.shortcut-keys kbd {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-head);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.shortcut-unset {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.shortcut-unset:hover {
+  color: var(--text-head);
+  text-decoration: underline;
+}
+
+.zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.zoom-value {
+  min-width: 48px;
+  color: var(--text-head);
+  font-weight: 800;
+}

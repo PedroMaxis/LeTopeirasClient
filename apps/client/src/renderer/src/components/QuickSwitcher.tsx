@@ -114,7 +114,8 @@ export function QuickSwitcher(props: { onOpen(channel: Channel): void; onClose()
         </div>
         <div className="switcher-hint">
           <kbd>↑</kbd> <kbd>↓</kbd> escolher · <kbd>Enter</kbd> abrir · <kbd>Esc</kbd> fechar ·{' '}
-          <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> canal anterior/próximo
+          <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> canal anterior/próximo · <kbd>Ctrl</kbd>+
+          <kbd>/</kbd> todos os atalhos
         </div>
       </div>
     </div>

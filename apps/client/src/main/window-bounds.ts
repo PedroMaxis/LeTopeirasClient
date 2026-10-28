@@ -15,8 +15,22 @@ export const windowStateSchema = z.object({
   width: z.number().int().positive(),
   height: z.number().int().positive(),
   maximized: z.boolean(),
+  /** Page zoom factor (Ctrl+= / Ctrl+-); files saved before it existed read as 1. */
+  zoom: z.number().min(0.5).max(2).default(1),
 });
 export type WindowState = z.infer<typeof windowStateSchema>;
+
+/** The zoom factors Ctrl+= / Ctrl+- walk through (Chromium's own steps). */
+export const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2] as const;
+
+/** The next step above (`1`) or below (`-1`) `current`, staying at the end of the list. */
+export function stepZoom(current: number, direction: 1 | -1): number {
+  const eps = 0.001;
+  const first = ZOOM_STEPS[0];
+  const last = ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? 1;
+  if (direction === 1) return ZOOM_STEPS.find((z) => z > current + eps) ?? last;
+  return ZOOM_STEPS.findLast((z) => z < current - eps) ?? first ?? 1;
+}
 
 /** How much of the saved window must still be on a screen to reuse its position. */
 const MIN_VISIBLE_WIDTH = 100;

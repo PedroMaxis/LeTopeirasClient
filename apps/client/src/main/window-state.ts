@@ -23,19 +23,23 @@ function load(): WindowState | null {
 export function restoreWindowState(min: { width: number; height: number }): {
   bounds: Partial<Rect>;
   maximized: boolean;
+  zoom: number;
 } {
   const saved = load();
-  if (!saved) return { bounds: {}, maximized: false };
+  if (!saved) return { bounds: {}, maximized: false, zoom: 1 };
   const placed = placeWindow(
     saved,
     screen.getAllDisplays().map((d) => d.workArea),
     min,
   );
-  return { bounds: placed ?? {}, maximized: saved.maximized };
+  return { bounds: placed ?? {}, maximized: saved.maximized, zoom: saved.zoom };
 }
 
-/** Saves size, position and maximized while the window changes, and when it hides or quits. */
-export function trackWindowState(win: BrowserWindow): void {
+/**
+ * Saves size, position, maximized and zoom while the window changes, and when it hides or quits.
+ * Returns a function that schedules a save (for changes the window doesn't announce, like zoom).
+ */
+export function trackWindowState(win: BrowserWindow): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const save = () => {
@@ -43,7 +47,11 @@ export function trackWindowState(win: BrowserWindow): void {
     timer = undefined;
     if (win.isDestroyed()) return;
     // Normal bounds: the size to come back to when un-maximizing, even while maximized.
-    const state: WindowState = { ...win.getNormalBounds(), maximized: win.isMaximized() };
+    const state: WindowState = {
+      ...win.getNormalBounds(),
+      maximized: win.isMaximized(),
+      zoom: win.webContents.getZoomFactor(),
+    };
     try {
       writeFileSync(stateFile(), JSON.stringify(state));
     } catch {
@@ -61,4 +69,5 @@ export function trackWindowState(win: BrowserWindow): void {
   win.on('unmaximize', saveSoon);
   win.on('hide', save);
   app.on('before-quit', save);
+  return saveSoon;
 }

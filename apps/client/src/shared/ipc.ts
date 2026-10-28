@@ -11,6 +11,10 @@ export const IpcChannel = {
   GetIdleSeconds: 'system:idle-seconds',
   WindowSetBadge: 'window:set-badge',
   WindowFlash: 'window:flash',
+  ZoomGet: 'window:zoom-get',
+  ZoomReset: 'window:zoom-reset',
+  /** main → renderer: the zoom factor changed (payload: factor, 1 = 100 %). */
+  ZoomChanged: 'window:zoom',
   GetLaunchAtLogin: 'app:get-launch-at-login',
   SetLaunchAtLogin: 'app:set-launch-at-login',
   SessionLoad: 'session:load',
@@ -185,6 +189,11 @@ export interface LeTopeirasApi {
   onVoiceAction(listener: (action: VoiceAction) => void): () => void;
   setTrayVoiceState(state: TrayVoiceState): Promise<void>;
   setTrayDoNotDisturb(on: boolean): Promise<void>;
+  /** Page zoom factor (1 = 100 %), changed with Ctrl+= / Ctrl+- / Ctrl+0 or the mouse wheel. */
+  getZoom(): Promise<number>;
+  resetZoom(): Promise<void>;
+  /** Called after every zoom change. Returns an unsubscribe function. */
+  onZoomChanged(listener: (factor: number) => void): () => void;
   /** Called when the tray menu toggles "Não perturbe". Returns an unsubscribe function. */
   onToggleDoNotDisturb(listener: () => void): () => void;
   /** The voice room we're in (null when none), in main's memory only. */

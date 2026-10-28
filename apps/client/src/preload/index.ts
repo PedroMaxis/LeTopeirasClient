@@ -44,6 +44,13 @@ const api: LeTopeirasApi = {
     return () => ipcRenderer.off(IpcChannel.VoiceAction, handler);
   },
   setTrayVoiceState: (state) => ipcRenderer.invoke(IpcChannel.TrayVoiceState, state),
+  getZoom: () => ipcRenderer.invoke(IpcChannel.ZoomGet),
+  resetZoom: () => ipcRenderer.invoke(IpcChannel.ZoomReset),
+  onZoomChanged: (listener) => {
+    const handler = (_event: unknown, factor: number) => listener(factor);
+    ipcRenderer.on(IpcChannel.ZoomChanged, handler);
+    return () => ipcRenderer.off(IpcChannel.ZoomChanged, handler);
+  },
   setTrayDoNotDisturb: (on) => ipcRenderer.invoke(IpcChannel.TrayDoNotDisturb, on),
   onToggleDoNotDisturb: (listener) => {
     const handler = () => listener();
