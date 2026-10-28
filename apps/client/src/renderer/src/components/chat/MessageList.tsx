@@ -10,13 +10,14 @@ import {
 import type { Channel, Message } from '@letopeiras/shared';
 import { summarizeUnread } from '../../lib/channels';
 import { formatDay, formatTime, sameDay } from '../../lib/format';
+import { anchorAt, scrollDeltaToAnchor } from '../../lib/scroll';
 import { showToast } from '../../lib/toast';
 import { useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
 import { useSession } from '../../state/session';
 import { Icon } from '../ui/Icon';
 import { Mole } from '../ui/Mole';
-import { JUMP_TO_MESSAGE_EVENT, takePendingJump } from './events';
+import { hasPendingJump, JUMP_TO_MESSAGE_EVENT, takePendingJump } from './events';
 import { MessageItem, PendingItem } from './MessageItem';
 
 /** Consecutive messages from the same author within this window share one header. */
@@ -124,6 +125,83 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
     return () => observer.disconnect();
   }, [measureDivider]);
 
+  // Remember where we were scrolled to (not when at the end), to come back to it.
+  const frame = useRef(0);
+  // Recording waits until we know whether there is a position to restore (else the scroll to
+  // the end on mount would erase it).
+  const restoring = useRef(true);
+  const recordAnchor = useCallback(() => {
+    if (frame.current || restoring.current) return;
+    frame.current = requestAnimationFrame(() => {
+      frame.current = 0;
+      const el = scroller.current;
+      if (!el || restoring.current) return;
+      if (atBottom.current) return chat.setScrollAnchor(channel.id, null);
+      const items = [...el.querySelectorAll<HTMLElement>('[data-message-id]')].map((node) => {
+        const box = node.getBoundingClientRect();
+        return { id: Number(node.dataset['messageId']), top: box.top, bottom: box.bottom };
+      });
+      chat.setScrollAnchor(channel.id, anchorAt(items, el.getBoundingClientRect().top));
+    });
+  }, [chat, channel.id]);
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  // Coming back to a channel: restore that position once its messages are there, loading older
+  // pages if it was far up. A deleted message (or no saved spot) leaves us at the end.
+  const loaded = entry !== undefined;
+  useEffect(() => {
+    const anchor = chat.getScrollAnchor(channel.id);
+    if (!loaded) return;
+    if (!anchor || hasPendingJump(channel.id)) {
+      restoring.current = false;
+      return;
+    }
+    let cancelled = false;
+    atBottom.current = false;
+    void (async () => {
+      const deadline = Date.now() + JUMP_TIMEOUT_MS;
+      for (let pages = 0; !cancelled && Date.now() < deadline;) {
+        const el = scroller.current?.querySelector<HTMLElement>(
+          `[data-message-id="${anchor.messageId}"]`,
+        );
+        const box = scroller.current;
+        if (el && box) {
+          box.scrollTop += scrollDeltaToAnchor(
+            el.getBoundingClientRect().top,
+            box.getBoundingClientRect().top,
+            anchor,
+          );
+          lastHeight.current = box.scrollHeight;
+          restoring.current = false;
+          return;
+        }
+        const current = chat.store.get().messages[channel.id];
+        if (current?.loading) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          continue;
+        }
+        const oldest = current?.messages[0]?.id;
+        if (!current || !current.hasMore || (oldest !== undefined && oldest < anchor.messageId))
+          break;
+        if (pages++ >= MAX_JUMP_PAGES) break;
+        await chat.loadMessages(channel.id);
+        await nextFrame();
+        await nextFrame();
+      }
+      if (cancelled) return;
+      // Not found: back to the end, as if there was nothing saved.
+      chat.setScrollAnchor(channel.id, null);
+      atBottom.current = true;
+      const box = scroller.current;
+      if (box) box.scrollTop = box.scrollHeight;
+      restoring.current = false;
+    })();
+    return () => {
+      cancelled = true;
+      restoring.current = false;
+    };
+  }, [chat, channel.id, loaded]);
+
   // Reply quotes and search results: scroll to a message, loading older pages if needed.
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +286,7 @@ export function MessageList({ channel, ref }: { channel: Channel; ref?: Ref<Mess
     else if (awayFrom === null) setAwayFrom(messages.at(-1)?.id ?? 0);
     setFar(distance > el.clientHeight);
     measureDivider();
+    recordAnchor();
     if (el.scrollTop < LOAD_MORE_THRESHOLD_PX && entry?.hasMore && !entry.loading) {
       void chat.loadMessages(channel.id);
     }

@@ -15,6 +15,7 @@ import { isUnread } from '../lib/channels';
 import { Gateway, type GatewayStatus } from '../lib/gateway';
 import { notifyMessage } from '../lib/notify';
 import { canAccess } from '../lib/roles';
+import type { ScrollAnchor } from '../lib/scroll';
 import { Store } from '../lib/store';
 import { showToast } from '../lib/toast';
 
@@ -103,6 +104,8 @@ export class ChatClient {
   private viewingChannelId: number | null = null;
   /** Unsent composer text per channel. Memory only, so message text never touches the disk. */
   private readonly drafts = new Map<number, string>();
+  /** Where each text channel was scrolled to when we left it (absent: at the end). Memory only. */
+  private readonly scrollAnchors = new Map<number, ScrollAnchor>();
 
   constructor(
     token: string,
@@ -246,6 +249,16 @@ export class ChatClient {
   setDraft(channelId: number, text: string): void {
     if (text) this.drafts.set(channelId, text);
     else this.drafts.delete(channelId);
+  }
+
+  getScrollAnchor(channelId: number): ScrollAnchor | undefined {
+    return this.scrollAnchors.get(channelId);
+  }
+
+  /** `null` = at the end of the channel, so coming back goes to the end. */
+  setScrollAnchor(channelId: number, anchor: ScrollAnchor | null): void {
+    if (anchor) this.scrollAnchors.set(channelId, anchor);
+    else this.scrollAnchors.delete(channelId);
   }
 
   setViewingChannel(channelId: number | null): void {
