@@ -424,7 +424,22 @@ export function VoiceSettings() {
           checked={s.autoGainControl}
           onChange={(autoGainControl) => updateSettings({ autoGainControl })}
         />
+        <ToggleRow
+          label="Abaixar transmissões e música quando alguém fala"
+          description="O áudio das transmissões e a música baixam enquanto alguém da sala fala (você incluído). As vozes nunca baixam."
+          checked={s.ducking}
+          onChange={(ducking) => updateSettings({ ducking })}
+        />
       </div>
+      {s.ducking && (
+        <Slider
+          id="ducking-amount"
+          label="QUANTO ABAIXAR"
+          value={s.duckingAmount}
+          max={80}
+          onChange={(duckingAmount) => updateSettings({ duckingAmount })}
+        />
+      )}
       <div className="field">
         <FieldLabel htmlFor="noise-suppression">SUPRESSÃO DE RUÍDO</FieldLabel>
         <select

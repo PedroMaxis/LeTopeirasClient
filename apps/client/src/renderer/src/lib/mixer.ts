@@ -1,4 +1,5 @@
 import { rms, toDb } from './audio';
+import { DUCK_ATTACK_TC, DUCK_RELEASE_TC } from './ducking';
 
 const LEVEL_FFT_SIZE = 512;
 
@@ -22,25 +23,37 @@ export class AudioMixer {
   private samples = new Float32Array(LEVEL_FFT_SIZE);
   private sinkId = 'default';
   private masterGain = 1;
+  /** Screen share audio goes through this one, so it alone can be ducked. */
+  private shareBus: GainNode | null = null;
+  private duck = 1;
 
-  private ensure(): { context: AudioContext; master: GainNode } {
+  private ensure(): { context: AudioContext; master: GainNode; shareBus: GainNode } {
     if (!this.context || !this.master) {
       this.context = new AudioContext({ latencyHint: 'interactive' });
       this.master = this.context.createGain();
       this.master.gain.value = this.masterGain;
       this.master.connect(this.context.destination);
+      this.shareBus = this.context.createGain();
+      this.shareBus.gain.value = this.duck;
+      this.shareBus.connect(this.master);
       void this.applySink();
     }
-    return { context: this.context, master: this.master };
+    return { context: this.context, master: this.master, shareBus: this.shareBus as GainNode };
   }
 
   /**
    * `keeper` is the muted element LiveKit attached the track to: Chromium only feeds remote
    * WebRTC audio into Web Audio while the track is also playing in a media element.
    */
-  add(id: string, track: MediaStreamTrack, keeper: HTMLMediaElement, gain: number): void {
+  add(
+    id: string,
+    track: MediaStreamTrack,
+    keeper: HTMLMediaElement,
+    gain: number,
+    screen = false,
+  ): void {
     this.remove(id);
-    const { context, master } = this.ensure();
+    const { context, master, shareBus } = this.ensure();
     keeper.muted = true;
     // Something unmuting the keeper (e.g. LiveKit's Room.startAudio) would play the track a
     // second time, bypassing per-user volume and deafen.
@@ -50,7 +63,7 @@ export class AudioMixer {
     const source = context.createMediaStreamSource(new MediaStream([track]));
     const gainNode = context.createGain();
     gainNode.gain.value = gain;
-    source.connect(gainNode).connect(master);
+    source.connect(gainNode).connect(screen ? shareBus : master);
     // Before the gain, so per-user volume and deafen don't change who looks like speaking.
     const analyser = context.createAnalyser();
     analyser.fftSize = LEVEL_FFT_SIZE;
@@ -82,6 +95,18 @@ export class AudioMixer {
     if (entry) entry.gain.gain.value = gain;
   }
 
+  /** Scales every screen share by `factor` (1 = not ducked), easing in ~100 ms / out ~600 ms. */
+  setShareDuck(factor: number): void {
+    const down = factor < this.duck;
+    this.duck = factor;
+    if (!this.context || !this.shareBus) return;
+    this.shareBus.gain.setTargetAtTime(
+      factor,
+      this.context.currentTime,
+      down ? DUCK_ATTACK_TC : DUCK_RELEASE_TC,
+    );
+  }
+
   setMasterGain(gain: number): void {
     this.masterGain = gain;
     if (this.master) this.master.gain.value = gain;
@@ -102,5 +127,6 @@ export class AudioMixer {
     void this.context?.close();
     this.context = null;
     this.master = null;
+    this.shareBus = null;
   }
 }

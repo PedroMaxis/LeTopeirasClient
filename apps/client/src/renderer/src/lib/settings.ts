@@ -66,6 +66,10 @@ const settingsSchema = z.object({
   channelNotify: z.record(z.string(), z.enum(['all', 'mentions', 'none'])).default({}),
   /** Local only: no toasts, message sounds or taskbar flashing (others still see you online). */
   doNotDisturb: z.boolean().default(false),
+  /** Lower screen share audio and the music while anyone in the room speaks (lib/ducking.ts). */
+  ducking: z.boolean().default(true),
+  /** Percent to lower by while ducking, 0–80. */
+  duckingAmount: z.number().int().min(0).max(80).default(50),
   /** Volume of the room's music in percent (0–100). The embed can't use the output device setting. */
   musicVolume: z.number().int().min(0).max(100).default(60),
   /** Per-user voice volume in percent (0–200), keyed by user id. */

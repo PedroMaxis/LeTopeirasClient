@@ -1,5 +1,6 @@
 import type { MusicVideo } from '@letopeiras/shared';
 import { errorMessage, type Api } from '../lib/api';
+import { duckTarget, MUSIC_DUCK_STEP_MS, stepDuck } from '../lib/ducking';
 import { expectedPositionMs, planSync } from '../lib/music-sync';
 import { settings } from '../lib/settings';
 import { Store } from '../lib/store';
@@ -35,6 +36,9 @@ export class MusicClient {
   /** Track ids already reported to the server, so a repeated event isn't sent twice. */
   private readonly reported = new Set<string>();
   private searchId = 0;
+  /** How far the music is lowered for someone speaking: 1 = not at all. */
+  private duck = 1;
+  private duckTimer: ReturnType<typeof setInterval> | undefined;
 
   constructor(
     private readonly api: Api,
@@ -50,15 +54,21 @@ export class MusicClient {
         this.sync();
       }
     });
-    const stopSettings = settings.subscribe(() => this.applyVolume());
+    const stopSettings = settings.subscribe(() => {
+      this.applyVolume();
+      this.followDuck();
+    });
+    const stopVoice = this.voice.store.subscribe(() => this.followDuck());
     this.unsubscribe = () => {
       stopChat();
       stopSettings();
+      stopVoice();
     };
   }
 
   dispose(): void {
     clearInterval(this.timer);
+    clearInterval(this.duckTimer);
     this.unsubscribe();
     this.player = null;
   }
@@ -135,10 +145,31 @@ export class MusicClient {
   }
 
   private applyVolume(): void {
-    const volume = settings.get().musicVolume;
+    const volume = Math.round(settings.get().musicVolume * this.duck);
     if (!this.player?.ready || volume === this.lastVolume) return;
     this.lastVolume = volume;
     this.player.setVolume(volume);
+  }
+
+  /** Eases the music's volume toward the ducked or normal level, in 100 ms steps. */
+  private followDuck(): void {
+    if (this.duckTimer) return;
+    const s = settings.get();
+    const target = () => duckTarget(s.ducking, this.voice.store.get().ducked, s.duckingAmount);
+    if (this.duck === target()) return;
+    this.duckTimer = setInterval(() => {
+      const now = settings.get();
+      const goal = duckTarget(now.ducking, this.voice.store.get().ducked, now.duckingAmount);
+      this.duck = stepDuck(this.duck, goal, now.duckingAmount);
+      this.applyVolume();
+      if (this.duck === goal) {
+        clearInterval(this.duckTimer);
+        this.duckTimer = undefined;
+      }
+    }, MUSIC_DUCK_STEP_MS);
+    // The first step shouldn't wait 100 ms when going down.
+    this.duck = stepDuck(this.duck, target(), s.duckingAmount);
+    this.applyVolume();
   }
 
   // -------------------------------------------------------------------------

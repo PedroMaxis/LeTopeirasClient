@@ -16,6 +16,7 @@ import {
 import type { KeybindBinding } from '../../../shared/ipc';
 import { errorMessage, type Api } from '../lib/api';
 import { levelFromDb, MicProcessor, rms, startMicMeter, toDb, type MicOptions } from '../lib/audio';
+import { duckTarget } from '../lib/ducking';
 import { logEvent, watchShareStats } from '../lib/diagnostics';
 import { NOISE_SAMPLE_RATE } from '../lib/noise';
 import {
@@ -67,6 +68,8 @@ export interface VoiceState {
    * about half a second late.
    */
   speaking: ReadonlySet<string>;
+  /** Share audio and music are lowered because someone is speaking (settings.ducking). */
+  ducked: boolean;
   /** We're muted but the mic hears speech: shows "Você está mutado" for a few seconds. */
   mutedSpeaking: boolean;
   /** Round trip to the LiveKit server, for the "Voz conectada" panel. */
@@ -135,6 +138,7 @@ export class VoiceClient {
     mutedShares: new Set(),
     shareWatch: new Map(),
     speaking: new Set(),
+    ducked: false,
     mutedSpeaking: false,
     pingMs: null,
     version: 0,
@@ -539,7 +543,13 @@ export class VoiceClient {
         const keeper = track.attach();
         this.audioContainer.appendChild(keeper);
         this.audioSources.set(publication.trackSid, tag);
-        this.mixer.add(publication.trackSid, track.mediaStreamTrack, keeper, this.gainFor(tag));
+        this.mixer.add(
+          publication.trackSid,
+          track.mediaStreamTrack,
+          keeper,
+          this.gainFor(tag),
+          tag.screen,
+        );
       },
     );
     room.on(
@@ -630,8 +640,10 @@ export class VoiceClient {
       sharingAudio: false,
       shareWatch: new Map(),
       speaking: new Set(),
+      ducked: false,
       pingMs: null,
     });
+    this.applyDuck();
     void this.syncMutedMeter(settings.get());
     void this.syncPushToTalk(settings.get());
   }
@@ -685,7 +697,16 @@ export class VoiceClient {
     const current = this.state.speaking;
     if (speaking.size !== current.size || [...speaking].some((id) => !current.has(id))) {
       this.store.set({ speaking });
+      this.applyDuck();
     }
+  }
+
+  /** Lowers share audio (here) and the music (`MusicClient` reads `ducked`) while anyone speaks. */
+  private applyDuck(): void {
+    const s = settings.get();
+    const ducked = duckTarget(s.ducking, this.state.speaking.size > 0, s.duckingAmount) < 1;
+    this.mixer.setShareDuck(duckTarget(s.ducking, ducked, s.duckingAmount));
+    if (ducked !== this.state.ducked) this.store.set({ ducked });
   }
 
   /** Level of our mic as sent (dBFS); follows the track when LiveKit or a processor swaps it. */
@@ -863,6 +884,9 @@ export class VoiceClient {
     const { room } = this.state;
     if (!room) return;
     if (prev.autoWatchShares !== next.autoWatchShares) this.report();
+    if (prev.ducking !== next.ducking || prev.duckingAmount !== next.duckingAmount) {
+      this.applyDuck();
+    }
     if (
       prev.outputVolume !== next.outputVolume ||
       prev.userVolumes !== next.userVolumes ||
