@@ -9,7 +9,7 @@ import { showToast } from '../../lib/toast';
 import { AttachmentTray, useAttachmentTray } from './AttachmentTray';
 import { EmojiPicker } from './EmojiPicker';
 import { editingMessage, replyingTo } from './MessageItem';
-import { useMentionAutocomplete } from './MentionSuggestions';
+import { useTextAutocomplete } from './EmojiSuggestions';
 
 /** Window event with `File[]` in `detail` (dropped on the chat): goes into the open composer. */
 export const ATTACH_FILES_EVENT = 'letopeiras:attach-files';
@@ -31,7 +31,7 @@ export function Composer({ channel, onEscape }: { channel: Channel; onEscape(): 
     const el = input.current;
     el?.setSelectionRange(el.value.length, el.value.length);
   }, []);
-  const mentions = useMentionAutocomplete({ channel, value, setValue, input });
+  const mentions = useTextAutocomplete({ channel, value, setValue, input });
 
   /** Inserts at the cursor and keeps typing focus. */
   const insertEmoji = (emoji: string) => {

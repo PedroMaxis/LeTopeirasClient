@@ -27,9 +27,9 @@ export const LIMITS = {
 } as const;
 
 // One emoji: pictographs plus the joiners, variation selectors, skin tones and keycaps that
-// build composite ones (👍🏽, ❤️, 👨‍👩‍👧, 1️⃣), or a flag (two regional indicators).
+// build composite ones (👍🏽, ❤️, 👨‍👩‍👧, 1️⃣), or a flag (two regional indicators, or 🏴 plus tag characters for England, Scotland and Wales).
 const EMOJI_PATTERN =
-  /^(?:(?:\p{Extended_Pictographic}|[#*0-9]\uFE0F?\u20E3)(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}\uFE0F?)*|\p{Regional_Indicator}{2})$/u;
+  /^(?:(?:\p{Extended_Pictographic}|[#*0-9]\uFE0F?\u20E3)(?:\uFE0F|\p{Emoji_Modifier}|\u200D\p{Extended_Pictographic}\uFE0F?)*|\p{Regional_Indicator}{2}|🏴[󠀠-󠁾]+󠁿)$/u;
 
 /** Whether `text` is a single emoji, as reactions require. */
 export function isReactionEmoji(text: string): boolean {

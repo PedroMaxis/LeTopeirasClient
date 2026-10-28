@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEve
 import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeiras/shared';
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
+import { recordEmojiUse, useQuickReactions } from '../../lib/emoji-data';
 import { hideSpoilers, renderMarkdown } from '../../lib/markdown';
 import { settings } from '../../lib/settings';
 import { Store, useStore } from '../../lib/store';
@@ -16,7 +17,7 @@ import { IconButton } from '../ui/controls';
 import { Attachments } from './Attachments';
 import { Embeds } from './Embeds';
 import { EmojiPicker } from './EmojiPicker';
-import { useMentionAutocomplete } from './MentionSuggestions';
+import { useTextAutocomplete } from './EmojiSuggestions';
 import { jumpToMessage } from './events';
 
 /** The message being edited, if any; one at a time, opened from the item or with ↑. */
@@ -26,9 +27,6 @@ export const editingMessage = new Store<{ id: number | null }>({ id: null });
 export const replyingTo = new Store<{
   target: { channelId: number; messageId: number; authorId: number; ping: boolean } | null;
 }>({ target: null });
-
-/** The reaction row at the top of a message's right-click menu. */
-const QUICK_REACTIONS = ['👍', '😂', '❤️', '😮'];
 
 /** One line of plain text from a message, for reply quotes (spoilers stay hidden). */
 export const snippetOf = (content: string) =>
@@ -59,6 +57,12 @@ export function MessageItem({ message, grouped }: Props) {
   const card = useMemberCard();
   const menu = useContextMenu();
   const personMenu = usePersonMenu();
+  // The most used emojis: the first 4 are the right-click row, the first 3 the hover bar.
+  const quick = useQuickReactions(4);
+  const react = (emoji: string) => {
+    recordEmojiUse(emoji);
+    chat.toggleReaction(message.channelId, message.id, emoji);
+  };
 
   const mine = message.authorId === me?.id;
   const mentionsMe =
@@ -111,14 +115,14 @@ export function MessageItem({ message, grouped }: Props) {
         key: 'reactions',
         render: (close) => (
           <div className="context-reactions">
-            {QUICK_REACTIONS.map((emoji) => (
+            {quick.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 title={`Reagir com ${emoji}`}
                 onClick={() => {
                   close();
-                  chat.toggleReaction(message.channelId, message.id, emoji);
+                  react(emoji);
                 }}
               >
                 {emoji}
@@ -237,6 +241,17 @@ export function MessageItem({ message, grouped }: Props) {
       </div>
       {!editing && (
         <div className="message-actions">
+          {quick.slice(0, 3).map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              className="message-quick-reaction"
+              title={`Reagir com ${emoji}`}
+              onClick={() => react(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
           <IconButton
             icon="smilePlus"
             size={16}
@@ -289,7 +304,7 @@ export function MessageItem({ message, grouped }: Props) {
 }
 
 const PICKER_WIDTH = 340;
-const PICKER_HEIGHT = 320;
+const PICKER_HEIGHT = 380;
 
 /** Where the reaction picker goes: above the button if it fits, else below; inside the window. */
 function pickerPosition(button: HTMLElement): CSSProperties {
@@ -369,7 +384,7 @@ function EditBox(props: {
 }) {
   const [value, setValue] = useState(props.initial);
   const input = useRef<HTMLTextAreaElement>(null);
-  const mentions = useMentionAutocomplete({ channel: props.channel, value, setValue, input });
+  const mentions = useTextAutocomplete({ channel: props.channel, value, setValue, input });
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     // An open suggestion list gets Enter/Esc first, like in the message box.
     if (mentions.onKeyDown(e)) return;

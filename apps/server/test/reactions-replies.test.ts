@@ -5,7 +5,7 @@ import { bearer, connect, createTestApp, type TestSocket } from './helpers';
 
 describe('isReactionEmoji', () => {
   it('accepts single emojis, composite ones included', () => {
-    for (const emoji of ['👍', '👍🏽', '❤️', '👨‍👩‍👧', '1️⃣', '🇧🇷', '⛏️']) {
+    for (const emoji of ['👍', '👍🏽', '❤️', '👨‍👩‍👧', '1️⃣', '🇧🇷', '⛏️', '🏴󠁧󠁢󠁥󠁮󠁧󠁿']) {
       expect(isReactionEmoji(emoji), emoji).toBe(true);
     }
   });
