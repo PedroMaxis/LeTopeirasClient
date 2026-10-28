@@ -7,6 +7,7 @@ import { attachContextMenu, registerSpellcheck } from './context-menu';
 import { registerDiagnostics, startCrashReporter } from './diagnostics';
 import { configurePermissions } from './permissions';
 import { assertTrustedSender, rendererDevUrl, rendererFile } from './renderer';
+import { registerImageSave } from './image-save';
 import { registerPushToTalk } from './push-to-talk';
 import { registerScreenCapture } from './screen-capture';
 import { registerSessionStore } from './session-store';
@@ -183,6 +184,7 @@ if (!app.requestSingleInstanceLock()) {
     registerVoiceControls();
     registerVoiceResume();
     registerSpellcheck();
+    registerImageSave();
     registerIpc(() => mainWindow);
     mainWindow = createMainWindow();
     createTray(mainWindow, () => app.quit());

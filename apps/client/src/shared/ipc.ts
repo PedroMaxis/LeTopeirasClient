@@ -24,6 +24,7 @@ export const IpcChannel = {
   VoiceResumeState: 'voice:resume-state',
   VoiceTakeResume: 'voice:take-resume',
   SpellcheckSet: 'spellcheck:set',
+  ImageSave: 'image:save',
   SystemAudioStatus: 'system-audio:status',
   SystemAudioStart: 'system-audio:start',
   SystemAudioStop: 'system-audio:stop',
@@ -120,6 +121,9 @@ export interface ScreenSource {
   appIcon: string | null;
 }
 
+/** What `saveImage` did: wrote the file, or the person closed the dialog. */
+export type ImageSaveResult = 'saved' | 'cancelled';
+
 export interface LeTopeirasApi {
   getAppInfo(): Promise<AppInfo>;
   getScreenSources(): Promise<ScreenSource[]>;
@@ -203,6 +207,12 @@ export interface LeTopeirasApi {
 
   /** Turns the spellchecker (red underline + suggestions in the right-click menu) on or off. */
   setSpellcheck(enabled: boolean): Promise<void>;
+
+  /**
+   * Saves a chat image (a `/files/<hash>.webp` URL on our server) through a save dialog; main
+   * refuses any other URL.
+   */
+  saveImage(url: string): Promise<ImageSaveResult>;
 
   /** Version of an update that is downloaded and waiting for a restart, or null. */
   getReadyUpdate(): Promise<string | null>;

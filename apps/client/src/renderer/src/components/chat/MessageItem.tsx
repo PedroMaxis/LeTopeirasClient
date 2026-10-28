@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEve
 import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeiras/shared';
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
+import { copyImage, saveImage } from '../../lib/images';
 import { recordEmojiUse, useQuickReactions } from '../../lib/emoji-data';
 import { plainText, renderMarkdown } from '../../lib/markdown';
 import { settings } from '../../lib/settings';
@@ -109,6 +110,8 @@ export function MessageItem({ message, grouped }: Props) {
     // Text fields and selected text get main's native menu (spelling, copy).
     if (target.closest('textarea, input') || window.getSelection()?.toString()) return;
     const link = target.closest('a')?.href;
+    // Only attached images (ours); embed pictures come from other sites.
+    const image = target.closest<HTMLImageElement>('.attachment img')?.src;
     const at = { x: event.clientX, y: event.clientY };
     menu.open(event, [
       {
@@ -136,6 +139,9 @@ export function MessageItem({ message, grouped }: Props) {
       link && { label: 'Abrir link', onSelect: () => window.open(link) },
       link && { label: 'Copiar link', onSelect: () => void navigator.clipboard.writeText(link) },
       link && { separator: true },
+      image && { label: 'Copiar imagem', onSelect: () => void copyImage(image) },
+      image && { label: 'Salvar imagem', onSelect: () => void saveImage(image) },
+      image && { separator: true },
       { label: 'Responder', onSelect: reply },
       mine && message.content && { label: 'Editar', onSelect: () => setEditing(true) },
       message.content && {
