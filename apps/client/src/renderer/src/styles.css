@@ -3783,6 +3783,16 @@ button.tag-chip:hover {
   font-size: 14px;
 }
 
+.member-card-note {
+  width: 100%;
+  min-height: 52px;
+  resize: none;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
 .member-card-admin {
   padding: 1px 6px;
   border-radius: 4px;

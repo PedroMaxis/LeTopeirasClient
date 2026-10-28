@@ -1,4 +1,5 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { loadNote, NOTE_MAX, saveNote } from '../lib/notes';
 import { canAccess, topRole } from '../lib/roles';
 import { settings } from '../lib/settings';
 import { useStore } from '../lib/store';
@@ -9,7 +10,7 @@ import { Avatar } from './ui/Avatar';
 export const INSERT_MENTION_EVENT = 'letopeiras:insert-mention';
 
 const CARD_WIDTH = 300;
-const CARD_HEIGHT = 340; // tallest case, for keeping it inside the window
+const CARD_HEIGHT = 440; // tallest case, for keeping it inside the window
 
 interface Target {
   userId: number;
@@ -108,6 +109,7 @@ function MemberCard({ target, onClose }: { target: Target; onClose(): void }) {
               ))}
             </div>
           )}
+          {!isMe && me && <NoteField key={user.id} myId={me.id} userId={user.id} />}
           {inMyRoom && !isMe && (
             <label className="field-label" htmlFor="card-volume">
               VOLUME <span className="slider-value">{volume}%</span>
@@ -141,5 +143,40 @@ function MemberCard({ target, onClose }: { target: Target; onClose(): void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/** "Nota": private text about this person, saved when leaving the field (or closing the card). */
+function NoteField({ myId, userId }: { myId: number; userId: number }) {
+  const [text, setText] = useState(() => loadNote(myId, userId));
+  const saved = useRef(text);
+  const latest = useRef(text);
+
+  const save = () => {
+    if (latest.current === saved.current) return;
+    saveNote(myId, userId, latest.current);
+    saved.current = latest.current;
+  };
+  // Closing the card with Esc unmounts the field without a blur.
+  useEffect(() => save, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <label className="field-label" htmlFor="card-note">
+      NOTA
+      <textarea
+        id="card-note"
+        className="input member-card-note"
+        rows={2}
+        maxLength={NOTE_MAX}
+        placeholder="Clique para adicionar uma nota"
+        value={text}
+        onChange={(e) => {
+          latest.current = e.target.value;
+          setText(e.target.value);
+        }}
+        onBlur={save}
+        onKeyDown={(e) => e.stopPropagation()}
+      />
+    </label>
   );
 }
