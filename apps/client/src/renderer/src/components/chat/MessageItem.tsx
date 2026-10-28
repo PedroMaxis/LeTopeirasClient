@@ -3,7 +3,7 @@ import { EVERYONE_MENTION, LIMITS, type Channel, type Message } from '@letopeira
 import { nameColor } from '../../lib/roles';
 import { formatFull, formatTime, formatTimestamp } from '../../lib/format';
 import { recordEmojiUse, useQuickReactions } from '../../lib/emoji-data';
-import { hideSpoilers, renderMarkdown } from '../../lib/markdown';
+import { plainText, renderMarkdown } from '../../lib/markdown';
 import { settings } from '../../lib/settings';
 import { Store, useStore } from '../../lib/store';
 import type { PendingMessage } from '../../state/chat';
@@ -30,7 +30,7 @@ export const replyingTo = new Store<{
 
 /** One line of plain text from a message, for reply quotes (spoilers stay hidden). */
 export const snippetOf = (content: string) =>
-  hideSpoilers(content)
+  plainText(content)
     .replace(/[*_~`|>]/g, '')
     .replace(/\s+/g, ' ')
     .trim();

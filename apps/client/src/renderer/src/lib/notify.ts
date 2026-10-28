@@ -1,5 +1,5 @@
 import type { Channel, Message, User } from '@letopeiras/shared';
-import { hideSpoilers } from './markdown';
+import { plainText } from './markdown';
 import { settings } from './settings';
 import { playSound } from './sounds';
 
@@ -76,7 +76,7 @@ export function notifyMessage(
   if (flash) void window.api.flashWindow();
   if (!toast) return;
   // An image-only message has no text to show.
-  const text = hideSpoilers(message.content) || '📷 Imagem';
+  const text = plainText(message.content) || '📷 Imagem';
   const body = text.length > MAX_BODY ? `${text.slice(0, MAX_BODY)}…` : text;
   const who = author?.displayName ?? 'Alguém';
   const title = !context.mentionsMe
