@@ -155,11 +155,16 @@ export function VoiceStage({
   channel,
   actions,
   hidden,
+  focusMode,
+  onToggleFocus,
   chat: chatPanel,
 }: {
   channel: Channel;
   actions: LayoutActions;
   hidden: boolean;
+  /** Sidebar, members and the side panels are hidden so the stage fills the window. */
+  focusMode: boolean;
+  onToggleFocus(): void;
   /** The text chat panel beside the stage (state lives in MainLayout). */
   chat: {
     channel: Channel | undefined;
@@ -298,6 +303,13 @@ export function VoiceStage({
             </button>
           )}
           <IconButton
+            icon="fullscreen"
+            size={22}
+            label={focusMode ? 'Sair do modo foco (Ctrl+Shift+F)' : 'Modo foco (Ctrl+Shift+F)'}
+            active={focusMode}
+            onClick={onToggleFocus}
+          />
+          <IconButton
             icon="music"
             size={22}
             label={musicOpen ? 'Esconder a música' : playing ? 'Música (tocando)' : 'Música'}
@@ -404,11 +416,11 @@ export function VoiceStage({
           </div>
         </div>
         {/* Not while hidden: the player then floats in the corner instead. */}
-        {musicOpen && !hidden && (
+        {musicOpen && !hidden && !focusMode && (
           <MusicPanel channelId={channel.id} onClose={() => setMusicOpen(false)} />
         )}
         {/* Not while hidden: the text view has its own composer for the same channel. */}
-        {chatPanel.open && chatPanel.channel && !hidden && (
+        {chatPanel.open && chatPanel.channel && !hidden && !focusMode && (
           <ChatPanel
             channel={chatPanel.channel}
             onSelect={chatPanel.onSelect}

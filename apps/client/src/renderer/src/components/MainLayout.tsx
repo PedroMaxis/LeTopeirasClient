@@ -64,6 +64,8 @@ export function MainLayout() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [search, setSearch] = useState<SearchRequest | null>(null);
+  // Focus mode: only on the voice stage, only in memory.
+  const [focusMode, setFocusMode] = useState(false);
 
   // When nothing (or a deleted or now-locked channel) is selected, or we left the voice
   // channel on screen, fall back to the last text channel (this session's, then the stored
@@ -89,6 +91,9 @@ export function MainLayout() {
       : fallbackId !== undefined
         ? { kind: 'text', channelId: fallbackId }
         : null;
+
+  // Leaving the stage (to a text channel, or out of the room) ends focus mode.
+  if (focusMode && view?.kind !== 'voice') setFocusMode(false);
 
   // The voice stage's chat panel: the channel picked there, else the last text channel.
   const voiceChatChannelId = canOpenText(voiceChatId) ? voiceChatId : (fallbackId ?? null);
@@ -162,11 +167,18 @@ export function MainLayout() {
   // Ctrl+K: quick switcher. Alt+↑/↓: previous/next text channel in the sidebar, and with Shift
   // the previous/next unread one.
   const currentText = view?.kind === 'text' ? view.channelId : (fallbackId ?? null);
+  const onStage = view?.kind === 'voice';
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && !e.altKey && !e.shiftKey && e.code === 'KeyK') {
         e.preventDefault();
         setSwitcherOpen((open) => !open);
+        return;
+      }
+      // Ctrl+Shift+F: focus mode on the voice stage (`code`: the letter, not the layout).
+      if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyF') {
+        e.preventDefault();
+        if (onStage) setFocusMode((on) => !on);
         return;
       }
       // Ctrl+/: the shortcuts window (it closes itself on the same keys). `key`, not `code`:
@@ -214,7 +226,7 @@ export function MainLayout() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [chat, currentText, settingsPage, pickerOpen, switcherOpen, shortcutsOpen]);
+  }, [chat, currentText, onStage, settingsPage, pickerOpen, switcherOpen, shortcutsOpen]);
 
   const actions: LayoutActions = {
     openView,
@@ -243,7 +255,7 @@ export function MainLayout() {
     voiceChannelId !== null ? channels.find((c) => c.id === voiceChannelId) : undefined;
 
   return (
-    <div className="main-layout">
+    <div className={`main-layout ${focusMode ? 'focus' : ''}`}>
       <ChannelSidebar view={view} actions={actions} />
       <main className="main-area">
         {status !== 'ready' && (
@@ -276,6 +288,8 @@ export function MainLayout() {
             channel={voiceChannel}
             actions={actions}
             hidden={view?.kind !== 'voice'}
+            focusMode={focusMode}
+            onToggleFocus={() => setFocusMode((on) => !on)}
             chat={{
               channel: voiceChatChannel,
               open: voiceChatOpen,

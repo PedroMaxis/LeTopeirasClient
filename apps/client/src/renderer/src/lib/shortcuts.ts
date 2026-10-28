@@ -53,6 +53,7 @@ export function shortcutGroups(
         { label: 'Aumentar o zoom', keys: 'Ctrl + =' },
         { label: 'Diminuir o zoom', keys: 'Ctrl + -' },
         { label: 'Zoom normal (100 %)', keys: 'Ctrl + 0' },
+        { label: 'Modo foco (só na sala de voz)', keys: 'Ctrl + Shift + F' },
         { label: 'Todos os atalhos', keys: 'Ctrl + /' },
         { label: 'Painel de depuração', keys: 'Ctrl + Shift + D' },
       ],
