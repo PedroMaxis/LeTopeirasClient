@@ -2797,6 +2797,67 @@ a:hover {
   padding: 16px 24px;
 }
 
+/* Profile photo cropper (components/settings/AvatarCropper.tsx) */
+.modal.avatar-cropper {
+  width: 440px;
+  padding: 20px 0 0;
+}
+
+.modal.avatar-cropper h2 {
+  padding: 0 24px;
+}
+
+.cropper-body {
+  display: flex;
+  gap: 20px;
+  padding: 16px 24px 8px;
+}
+
+.cropper-view {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: var(--bg-side);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.cropper-view:active {
+  cursor: grabbing;
+}
+
+.cropper-view canvas {
+  display: block;
+}
+
+/* Dims everything outside the round avatar. */
+.cropper-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle closest-side, transparent 99%, rgba(0, 0, 0, 0.6) 100%);
+}
+
+.cropper-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cropper-preview {
+  border-radius: 50%;
+}
+
+.cropper-zoom {
+  padding: 0 24px;
+}
+
+.cropper-zoom .slider {
+  width: 280px;
+}
+
 .modal.confirm {
   width: 440px;
   padding: 20px 0 0;

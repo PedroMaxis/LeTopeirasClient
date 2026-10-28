@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useCallback, useState, type FormEvent } from 'react';
 import { LIMITS } from '@letopeiras/shared';
 import { errorMessage } from '../../lib/api';
 import { nameColor } from '../../lib/roles';
@@ -7,6 +7,7 @@ import { showToast } from '../../lib/toast';
 import { useSession } from '../../state/session';
 import { Avatar } from '../ui/Avatar';
 import { FieldLabel } from '../ui/controls';
+import { AvatarCropper } from './AvatarCropper';
 
 export function ProfileSettings() {
   const { api, chat } = useSession();
@@ -15,6 +16,8 @@ export function ProfileSettings() {
   const [displayName, setDisplayName] = useState(me?.displayName ?? '');
   const [busy, setBusy] = useState(false);
   const [busyPhoto, setBusyPhoto] = useState(false);
+  const [cropping, setCropping] = useState<File | null>(null);
+  const closeCropper = useCallback(() => setCropping(null), []);
 
   const myRoles = roles.filter((r) => me?.roleIds.includes(r.id));
   const preview = me ? { ...me, displayName: displayName.trim() || me.displayName } : undefined;
@@ -79,7 +82,9 @@ export function ProfileSettings() {
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   e.target.value = '';
-                  if (file) void changePhoto(() => api.setAvatar(file));
+                  if (!file) return;
+                  if (file.size > LIMITS.avatarMaxBytes) showToast('A foto pode ter até 25 MB.');
+                  else setCropping(file);
                 }}
               />
             </label>
@@ -120,6 +125,16 @@ export function ProfileSettings() {
           </button>
         </div>
       </form>
+      {cropping && (
+        <AvatarCropper
+          file={cropping}
+          onCancel={closeCropper}
+          onApply={(cropped) => {
+            setCropping(null);
+            void changePhoto(() => api.setAvatar(cropped));
+          }}
+        />
+      )}
     </>
   );
 }
