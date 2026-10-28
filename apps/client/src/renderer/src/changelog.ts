@@ -5,6 +5,20 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.4.0',
+    items: [
+      '**Ouvir junto**: dentro de uma sala de voz, abra a **Música** no cabeçalho, busque no YouTube (ou cole um link do YouTube ou do Spotify) e monte a fila. Todo mundo da sala ouve a mesma música, e qualquer um pode pausar, pular ou ir para outro ponto. A música sai no dispositivo de áudio padrão do Windows, e quem usa caixa de som pode ouvir eco no microfone.',
+      '**Soundboard**: o botão no painel de voz toca sons para a sala. Tem 8 prontos e você pode adicionar até 20 seus (até 5 s). Clique direito num som seu para renomear ou remover.',
+      '**Abaixar o áudio quando alguém fala**: as transmissões e a música baixam enquanto alguém fala (em Voz e áudio dá para ajustar ou desligar).',
+      '**Modo foco**: `Ctrl+Shift+F` na sala de voz esconde as barras laterais para o palco ocupar a janela.',
+      '**Emojis**: catálogo completo com busca, seus emojis mais usados à mão e `:atalhos:` com sugestões ao digitar.',
+      '**Markdown**: títulos, listas, texto pequeno, links com nome (com confirmação antes de abrir) e blocos de código coloridos com botão de copiar.',
+      '**Imagens do chat**: copie ou salve pelo visualizador e pelo menu da mensagem. Cada canal lembra até onde você tinha rolado.',
+      '**Foto de perfil** com recorte, **notas privadas** sobre cada pessoa no cartão de membro, e **modo não perturbe**, com notificação por canal.',
+      '**Conforto**: o app lembra a posição e o tamanho da janela e volta para a chamada depois de um erro. Também ganhou zoom (`Ctrl+=`, `Ctrl+-`, `Ctrl+0`), menu de clique direito com corretor em português, `Esc` para marcar como lido e `Ctrl+/` com todos os atalhos.',
+    ],
+  },
+  {
     version: '0.3.1',
     items: [
       'Corrigido: no canal de voz, os quadros das pessoas podiam ficar um em cima do outro quando várias entravam seguidas.',
