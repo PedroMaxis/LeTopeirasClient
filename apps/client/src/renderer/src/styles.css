@@ -1079,6 +1079,14 @@ a:hover {
   color: var(--text-head);
 }
 
+.channel-item.silenced {
+  opacity: 0.55;
+}
+
+.channel-item.silenced.active {
+  opacity: 1;
+}
+
 .channel-item.unread {
   color: var(--text-head);
   font-weight: 700;
@@ -1299,9 +1307,55 @@ a:hover {
   border-color: var(--bg-user);
 }
 
+.user-panel-me {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.user-panel-me:hover {
+  background: var(--bg-hover);
+}
+
+.user-panel-avatar {
+  position: relative;
+  display: flex;
+}
+
+/* Red moon over the avatar: "Não perturbe" is on (only you see it). */
+.dnd-moon {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--danger);
+  color: #fff;
+  box-shadow: 0 0 0 2px var(--bg-user);
+}
+
 .user-panel-names {
   flex: 1;
   min-width: 0;
+}
+
+.user-panel-name,
+.user-panel-sub {
+  display: block;
 }
 
 .user-panel-name {

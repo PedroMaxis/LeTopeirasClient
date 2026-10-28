@@ -44,6 +44,12 @@ const api: LeTopeirasApi = {
     return () => ipcRenderer.off(IpcChannel.VoiceAction, handler);
   },
   setTrayVoiceState: (state) => ipcRenderer.invoke(IpcChannel.TrayVoiceState, state),
+  setTrayDoNotDisturb: (on) => ipcRenderer.invoke(IpcChannel.TrayDoNotDisturb, on),
+  onToggleDoNotDisturb: (listener) => {
+    const handler = () => listener();
+    ipcRenderer.on(IpcChannel.DoNotDisturbToggle, handler);
+    return () => ipcRenderer.off(IpcChannel.DoNotDisturbToggle, handler);
+  },
   setVoiceResume: (state) => ipcRenderer.invoke(IpcChannel.VoiceResumeState, state),
   takeVoiceResume: () => ipcRenderer.invoke(IpcChannel.VoiceTakeResume),
   setSpellcheck: (enabled) => ipcRenderer.invoke(IpcChannel.SpellcheckSet, enabled),

@@ -1,3 +1,5 @@
+import { badgeMentions } from './notify';
+import { settings } from './settings';
 import type { Store } from './store';
 
 const SIZE = 32;
@@ -27,7 +29,7 @@ function drawBadge(count: number): string | null {
 }
 
 /**
- * Keeps the taskbar button's overlay in sync with the unread mentions (all channels).
+ * Keeps the taskbar button's overlay in sync with the unread mentions (all channels except the ones set to "Nada").
  * Returns the cleanup, which also removes the overlay (logout).
  */
 export function syncTaskbarBadge(
@@ -35,7 +37,7 @@ export function syncTaskbarBadge(
 ): () => void {
   let shown = 0;
   const update = () => {
-    const total = Object.values(store.get().mentionCounts).reduce((sum, n) => sum + n, 0);
+    const total = badgeMentions(store.get().mentionCounts, settings.get().channelNotify);
     if (total === shown) return;
     shown = total;
     const description = total === 1 ? '1 marcação' : `${total} marcações`;
@@ -43,8 +45,10 @@ export function syncTaskbarBadge(
   };
   update();
   const unsubscribe = store.subscribe(update);
+  const unsubscribeSettings = settings.subscribe(update);
   return () => {
     unsubscribe();
+    unsubscribeSettings();
     if (shown > 0) void window.api.setTaskbarBadge(null, '');
   };
 }

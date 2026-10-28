@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type DragEvent } from 'react';
 import type { Channel } from '@letopeiras/shared';
 import { settings, updateSettings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
+import { channelNotifyEntries } from '../ui/channelNotifyMenu';
+import { useContextMenu } from '../ui/ContextMenu';
 import { IconButton } from '../ui/controls';
 import { Icon } from '../ui/Icon';
 import { ATTACH_FILES_EVENT, Composer } from './Composer';
@@ -16,6 +18,8 @@ export function ChatView({
   onSearch(query: string): void;
 }) {
   const showMembers = useStore(settings, (s) => s.showMembers);
+  const silenced = useStore(settings, (s) => s.channelNotify[channel.id] === 'none');
+  const bellMenu = useContextMenu();
   const list = useRef<MessageListHandle>(null);
   const searchBox = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
@@ -83,6 +87,14 @@ export function ChatView({
             />
             <Icon name="search" size={16} />
           </label>
+          {bellMenu.menu}
+          <IconButton
+            icon={silenced ? 'bellOff' : 'bell'}
+            size={22}
+            label="Notificações do canal"
+            active={silenced}
+            onClick={(e) => bellMenu.open(e, channelNotifyEntries(channel.id))}
+          />
           <IconButton
             icon="members"
             size={22}

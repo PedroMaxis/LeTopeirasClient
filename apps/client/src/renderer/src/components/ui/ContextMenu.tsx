@@ -19,7 +19,7 @@ export type MenuEntry =
       danger?: boolean;
       disabled?: boolean;
       /** Small text on the right ("Shift apaga direto"). */
-      hint?: string;
+      hint?: string | undefined;
     }
   | { title: string }
   | { separator: true }

@@ -2,10 +2,12 @@ import { useRef, useState, type MouseEvent } from 'react';
 import type { Category, Channel, VoiceParticipant } from '@letopeiras/shared';
 import { byTypeThenPosition } from '../../lib/channels';
 import { canAccess, nameColor } from '../../lib/roles';
+import { settings } from '../../lib/settings';
 import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
 import type { LayoutActions, View } from '../MainLayout';
 import { Avatar } from '../ui/Avatar';
+import { channelNotifyEntries } from '../ui/channelNotifyMenu';
 import { useContextMenu } from '../ui/ContextMenu';
 import { Icon } from '../ui/Icon';
 import { Mole, type MoleHandle } from '../ui/Mole';
@@ -112,6 +114,7 @@ function CategorySection(props: {
   const menu = useContextMenu();
   const { category, channels, collapsed, view } = props;
 
+  const channelNotify = useStore(settings, (s) => s.channelNotify);
   const unreadHere = channels.filter(
     (c) =>
       c.type === 'text' &&
@@ -126,7 +129,9 @@ function CategorySection(props: {
         (c) =>
           view?.channelId === c.id ||
           inVoice === c.id ||
-          (c.lastMessageId !== null && c.lastMessageId > (readStates[c.id] ?? 0)),
+          (channelNotify[c.id] !== 'none' &&
+            c.lastMessageId !== null &&
+            c.lastMessageId > (readStates[c.id] ?? 0)),
       )
     : channels;
 
@@ -192,6 +197,7 @@ function ChannelItem({
   const mentions = useStore(chat.store, (s) => s.mentionCounts[channel.id] ?? 0);
   const participants = useStore(chat.store, (s) => s.voice[channel.id]);
   const inVoice = useStore(voice.store, (s) => s.channelId);
+  const silenced = useStore(settings, (s) => s.channelNotify[channel.id] === 'none');
 
   const locked = !canAccess(me, channel);
   const kind = channel.type;
@@ -200,6 +206,7 @@ function ChannelItem({
     kind === 'text' &&
     !active &&
     !locked &&
+    !silenced &&
     channel.lastMessageId !== null &&
     channel.lastMessageId > (readStates[channel.id] ?? 0);
 
@@ -214,6 +221,8 @@ function ChannelItem({
         disabled: locked || !hasUnread,
         onSelect: () => chat.markRead(channel.id),
       },
+      kind === 'text' && { separator: true },
+      ...(kind === 'text' ? channelNotifyEntries(channel.id) : []),
       kind === 'voice' && {
         label: inVoice === channel.id ? 'Você está neste canal' : 'Entrar no canal',
         disabled: locked || inVoice === channel.id,
@@ -226,7 +235,7 @@ function ChannelItem({
       {menu.menu}
       <button
         type="button"
-        className={`channel-item ${active ? 'active' : ''} ${unread ? 'unread' : ''} ${locked ? 'locked' : ''}`}
+        className={`channel-item ${active ? 'active' : ''} ${unread ? 'unread' : ''} ${locked ? 'locked' : ''} ${silenced ? 'silenced' : ''}`}
         onClick={open}
         onContextMenu={onContextMenu}
         title={

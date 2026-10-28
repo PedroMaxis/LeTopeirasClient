@@ -8,6 +8,7 @@ let mainWindow: BrowserWindow | null = null;
 let quitApp: () => void = () => undefined;
 let icons: { idle: NativeImage; voice: NativeImage; muted: NativeImage } | null = null;
 let voice: TrayVoiceState = { inVoice: false, muted: false, deafened: false };
+let doNotDisturb = false;
 
 export function showWindow(win: BrowserWindow): void {
   if (win.isMinimized()) win.restore();
@@ -86,6 +87,15 @@ function render(): void {
       },
       { label: 'Desconectar', enabled: voice.inVoice, click: () => send('leave') },
       { type: 'separator' },
+      {
+        label: 'Não perturbe',
+        type: 'checkbox',
+        checked: doNotDisturb,
+        click: () => {
+          if (!win.isDestroyed()) win.webContents.send(IpcChannel.DoNotDisturbToggle);
+        },
+      },
+      { type: 'separator' },
       { label: 'Sair', click: quitApp },
     ]),
   );
@@ -100,6 +110,12 @@ export function createTray(win: BrowserWindow, quit: () => void): void {
   render();
   tray.on('click', () => showWindow(win));
   app.on('before-quit', () => tray?.destroy());
+}
+
+/** "Não perturbe" from the renderer: the menu checkmark. */
+export function updateTrayDoNotDisturb(on: boolean): void {
+  doNotDisturb = on;
+  render();
 }
 
 /** Voice state from the renderer: menu checkmarks and the icon's dot. */

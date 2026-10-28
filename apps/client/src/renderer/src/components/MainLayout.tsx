@@ -134,6 +134,19 @@ export function MainLayout() {
     openView({ kind: target.type, channelId: target.id });
   };
 
+  // "Não perturbe": the tray menu toggles it and shows its checkmark.
+  const doNotDisturb = useStore(settings, (s) => s.doNotDisturb);
+  useEffect(() => {
+    void window.api.setTrayDoNotDisturb(doNotDisturb);
+  }, [doNotDisturb]);
+  useEffect(
+    () =>
+      window.api.onToggleDoNotDisturb(() =>
+        updateSettings({ doNotDisturb: !settings.get().doNotDisturb }),
+      ),
+    [],
+  );
+
   // Ctrl+K: quick switcher. Alt+↑/↓: previous/next text channel in the sidebar, and with Shift
   // the previous/next unread one.
   const currentText = view?.kind === 'text' ? view.channelId : (fallbackId ?? null);
@@ -172,7 +185,8 @@ export function MainLayout() {
       for (let i = 1; i <= texts.length && !target; i++) {
         const candidate = texts[(((at + step * i) % texts.length) + texts.length) % texts.length];
         if (!candidate || candidate.id === currentText) continue;
-        if (!e.shiftKey || isUnread(candidate, s.readStates)) target = candidate;
+        const silenced = settings.get().channelNotify[candidate.id] === 'none';
+        if (!e.shiftKey || (isUnread(candidate, s.readStates) && !silenced)) target = candidate;
       }
       if (target) {
         setSelected({ kind: 'text', channelId: target.id });

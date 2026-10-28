@@ -36,6 +36,10 @@ export const IpcChannel = {
   /** main → renderer: a global shortcut or the tray asked for a voice action. */
   VoiceAction: 'voice:action',
   TrayVoiceState: 'tray:voice-state',
+  /** renderer → main: "Não perturbe" is on (true) or off, for the tray menu's checkmark. */
+  TrayDoNotDisturb: 'tray:dnd',
+  /** main → renderer: the tray menu's "Não perturbe" was clicked. */
+  DoNotDisturbToggle: 'dnd:toggle',
   UpdateGetReady: 'update:get-ready',
   UpdateInstall: 'update:install',
   /** main → renderer: an update finished downloading (payload: version). */
@@ -180,6 +184,9 @@ export interface LeTopeirasApi {
   /** Called on a global shortcut or a tray menu click. Returns an unsubscribe function. */
   onVoiceAction(listener: (action: VoiceAction) => void): () => void;
   setTrayVoiceState(state: TrayVoiceState): Promise<void>;
+  setTrayDoNotDisturb(on: boolean): Promise<void>;
+  /** Called when the tray menu toggles "Não perturbe". Returns an unsubscribe function. */
+  onToggleDoNotDisturb(listener: () => void): () => void;
   /** The voice room we're in (null when none), in main's memory only. */
   setVoiceResume(state: VoiceResume | null): Promise<void>;
   /** After main reloaded a crashed renderer: the room it was in, once; otherwise null. */

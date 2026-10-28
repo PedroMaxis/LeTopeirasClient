@@ -62,6 +62,10 @@ const settingsSchema = z.object({
   notifications: z.boolean().default(true),
   /** false: only notify when someone mentions you. */
   notifyAll: z.boolean().default(true),
+  /** Per-channel override of `notifyAll`, keyed by channel id (lib/notify.ts). No entry = follow it. */
+  channelNotify: z.record(z.string(), z.enum(['all', 'mentions', 'none'])).default({}),
+  /** Local only: no toasts, message sounds or taskbar flashing (others still see you online). */
+  doNotDisturb: z.boolean().default(false),
   /** Per-user voice volume in percent (0–200), keyed by user id. */
   userVolumes: z.record(z.string(), z.number().min(0).max(200)).default({}),
   /** Per-user screen share audio volume in percent (0–200), keyed by user id. */

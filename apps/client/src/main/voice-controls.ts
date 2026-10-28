@@ -4,7 +4,7 @@ import { IpcChannel, type Keybind, type VoiceAction } from '../shared/ipc';
 import { cancelRecording, comboName, heldModifiers, POLL_MS, recordKey } from './keys';
 import { loadNativeAddon } from './native';
 import { assertTrustedSender } from './renderer';
-import { updateTrayVoice } from './tray';
+import { updateTrayDoNotDisturb, updateTrayVoice } from './tray';
 
 const modsSchema = z.array(z.enum(['ctrl', 'shift', 'alt'])).max(3);
 const bindsSchema = z
@@ -76,6 +76,11 @@ export function registerVoiceControls(): void {
   ipcMain.handle(IpcChannel.TrayVoiceState, (event, rawState: unknown) => {
     assertTrustedSender(event);
     updateTrayVoice(trayStateSchema.parse(rawState));
+  });
+
+  ipcMain.handle(IpcChannel.TrayDoNotDisturb, (event, on: unknown) => {
+    assertTrustedSender(event);
+    updateTrayDoNotDisturb(on === true);
   });
 
   app.on('before-quit', () => {
