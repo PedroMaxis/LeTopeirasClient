@@ -10,8 +10,10 @@ A private, self-hosted Discord-style app for a group of friends: text chat, voic
 
 ## Features
 
-- **Text chat:** channels and categories, edit and delete, infinite scroll, unread markers, `@mentions` (including `@todos` for everyone) with autocomplete, emoji picker and native Windows notifications.
+- **Text chat:** channels and categories, edit and delete, replies, reactions, search, image attachments, link previews, Markdown (headings, lists, named links, highlighted code blocks), `@mentions` (including `@todos` for everyone) with autocomplete, a full emoji catalog with search and `:shortcodes:`, and native Windows notifications with per-channel settings and do-not-disturb.
 - **Voice:** one-click channels, mute and deafen, input and output device selection, an optional voice gate with a level meter, per-user volume up to 200 %, speaking indicators and ping.
+- **Listen together:** each voice room has a shared YouTube queue. The server keeps the queue and a shared clock, and every client plays the official embed and stays in sync. Search by text, or paste a YouTube or Spotify link.
+- **Soundboard:** built-in and custom sounds mixed into the microphone after the noise filter and the gate. Screen share audio and music duck while anyone speaks, and focus mode gives the stage the whole window.
 - **Screen share:** 1080p60 H.264 with a custom source picker, "game" or "text" modes, and the PC's audio captured per app or for the whole system.
 - **Roles and private channels:** colored tags assigned by the admin. Private channels only open for members with one of their tags. Losing access applies immediately, including being removed from a voice call.
 - **Invite-only sign-up**, presence (online and idle), typing indicators, and automatic reconnection of both the chat socket and the media session.
