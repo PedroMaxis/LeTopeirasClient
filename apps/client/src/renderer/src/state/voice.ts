@@ -670,6 +670,19 @@ export class VoiceClient {
     await this.applyMicProcessing(s);
   }
 
+  /**
+   * Plays a soundboard sound to the room and for us. False when it can't: not connected, or
+   * muted or deafened (the mic track is off then, so nobody would hear it).
+   */
+  playSoundboard(buffer: AudioBuffer): boolean {
+    const { status, muted, deafened } = this.state;
+    if (status !== 'connected' || muted || deafened || !this.micProcessor) return false;
+    const volume = settings.get().soundboardVolume / 100;
+    this.micProcessor.playBuffer(buffer, volume);
+    this.mixer.playLocal(buffer, volume);
+    return true;
+  }
+
   private micTrack(): LocalAudioTrack | undefined {
     const track = this.state.room?.localParticipant.getTrackPublication(
       Track.Source.Microphone,
@@ -831,8 +844,7 @@ export class VoiceClient {
       this.micProcessor.setOptions(options);
       return;
     }
-    if (options.gain === 1 && options.gateDb === null && !options.pushToTalk && !options.rnnoise)
-      return;
+    // Always inserted in a room: the soundboard mixes into this processor's output.
     this.audioContext ??= new AudioContext({ sampleRate: NOISE_SAMPLE_RATE });
     track.setAudioContext(this.audioContext);
     this.micProcessor = new MicProcessor(options);

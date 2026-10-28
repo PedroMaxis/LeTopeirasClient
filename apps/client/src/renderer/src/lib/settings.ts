@@ -70,6 +70,8 @@ const settingsSchema = z.object({
   ducking: z.boolean().default(true),
   /** Percent to lower by while ducking, 0–80. */
   duckingAmount: z.number().int().min(0).max(80).default(50),
+  /** Soundboard volume in percent (0–100), for what we send and what we hear. */
+  soundboardVolume: z.number().int().min(0).max(100).default(70),
   /** Volume of the room's music in percent (0–100). The embed can't use the output device setting. */
   musicVolume: z.number().int().min(0).max(100).default(60),
   /** Per-user voice volume in percent (0–200), keyed by user id. */

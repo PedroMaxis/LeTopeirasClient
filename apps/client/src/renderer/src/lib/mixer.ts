@@ -26,6 +26,7 @@ export class AudioMixer {
   /** Screen share audio goes through this one, so it alone can be ducked. */
   private shareBus: GainNode | null = null;
   private duck = 1;
+  private localSound: AudioBufferSourceNode | null = null;
 
   private ensure(): { context: AudioContext; master: GainNode; shareBus: GainNode } {
     if (!this.context || !this.master) {
@@ -105,6 +106,28 @@ export class AudioMixer {
       this.context.currentTime,
       down ? DUCK_ATTACK_TC : DUCK_RELEASE_TC,
     );
+  }
+
+  /** Plays a soundboard sound for us (the room hears it through the mic). One at a time. */
+  playLocal(buffer: AudioBuffer, volume: number): void {
+    const { context, master } = this.ensure();
+    try {
+      this.localSound?.stop();
+    } catch {
+      // Already finished.
+    }
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const gain = context.createGain();
+    gain.gain.value = volume;
+    source.connect(gain).connect(master);
+    source.onended = () => {
+      source.disconnect();
+      gain.disconnect();
+    };
+    if (context.state === 'suspended') void context.resume();
+    source.start();
+    this.localSound = source;
   }
 
   setMasterGain(gain: number): void {

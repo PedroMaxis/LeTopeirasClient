@@ -42,6 +42,8 @@ export class MicProcessor implements TrackProcessor<Track.Kind.Audio, AudioProce
   private noise: RnnoiseWorkletNode | undefined;
   private gainNode?: GainNode;
   private gateNode?: GainNode;
+  private destination?: MediaStreamAudioDestinationNode;
+  private sound?: AudioBufferSourceNode | undefined;
   private analyser?: AnalyserNode;
   private timer: ReturnType<typeof setInterval> | undefined;
   private lastVoiceAt = 0;
@@ -59,6 +61,7 @@ export class MicProcessor implements TrackProcessor<Track.Kind.Audio, AudioProce
     this.analyser = audioContext.createAnalyser();
     this.analyser.fftSize = 1024;
     const destination = audioContext.createMediaStreamDestination();
+    this.destination = destination;
     await this.wireInput();
     this.gainNode.connect(this.analyser);
     this.gainNode.connect(this.gateNode).connect(destination);
@@ -76,11 +79,42 @@ export class MicProcessor implements TrackProcessor<Track.Kind.Audio, AudioProce
 
   async destroy(): Promise<void> {
     clearInterval(this.timer);
+    this.stopSound();
     this.dropNoise();
     this.source?.disconnect();
     this.gainNode?.disconnect();
     this.gateNode?.disconnect();
     this.processedTrack?.stop();
+  }
+
+  /**
+   * Mixes a soundboard sound into what we send, after the noise filter and the gate (so
+   * neither eats it, and it goes out with the gate closed or push-to-talk up). One at a time.
+   */
+  playBuffer(buffer: AudioBuffer, volume: number): void {
+    const { context, destination } = this;
+    if (!context || !destination) return;
+    this.stopSound();
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    const gain = context.createGain();
+    gain.gain.value = volume;
+    source.connect(gain).connect(destination);
+    source.onended = () => {
+      source.disconnect();
+      gain.disconnect();
+    };
+    source.start();
+    this.sound = source;
+  }
+
+  private stopSound(): void {
+    try {
+      this.sound?.stop();
+    } catch {
+      // Already finished.
+    }
+    this.sound = undefined;
   }
 
   setOptions(options: MicOptions): void {

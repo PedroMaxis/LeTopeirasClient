@@ -1,8 +1,10 @@
+import { useCallback, useState } from 'react';
 import { useStore } from '../../lib/store';
 import { useSession } from '../../state/session';
 import type { LayoutActions } from '../MainLayout';
 import { IconButton } from '../ui/controls';
 import { Icon } from '../ui/Icon';
+import { SoundboardPopover } from '../voice/Soundboard';
 
 const statusLabel = {
   idle: '',
@@ -21,6 +23,10 @@ export function VoicePanel({ actions }: { actions: LayoutActions }) {
   const cameraOn = useStore(voice.store, (s) => s.cameraTrack !== null);
   const mutedSpeaking = useStore(voice.store, (s) => s.mutedSpeaking);
   const channel = useStore(chat.store, (s) => s.channels.find((c) => c.id === channelId));
+  const muted = useStore(voice.store, (s) => s.muted);
+  const deafened = useStore(voice.store, (s) => s.deafened);
+  const [soundboardOpen, setSoundboardOpen] = useState(false);
+  const closeSoundboard = useCallback(() => setSoundboardOpen(false), []);
 
   if (channelId === null) return null;
 
@@ -60,6 +66,19 @@ export function VoicePanel({ actions }: { actions: LayoutActions }) {
         <Icon name="screen" size={16} />
         {sharing ? 'Parar transmissão' : 'Tela'}
       </button>
+      <div className="soundboard-anchor">
+        {soundboardOpen && <SoundboardPopover onClose={closeSoundboard} />}
+        <button
+          type="button"
+          className={`button secondary small ${soundboardOpen ? 'sharing' : ''}`}
+          disabled={status !== 'connected' || muted || deafened}
+          title={muted || deafened ? 'Desmute para usar o soundboard' : undefined}
+          onClick={() => setSoundboardOpen((open) => !open)}
+        >
+          <Icon name="music" size={16} />
+          Soundboard
+        </button>
+      </div>
       <button
         type="button"
         className={`button secondary small ${cameraOn ? 'sharing' : ''}`}

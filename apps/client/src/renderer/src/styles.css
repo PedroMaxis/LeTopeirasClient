@@ -4861,3 +4861,100 @@ button.tag-chip:hover {
 .main-layout.focus .sidebar {
   display: none;
 }
+
+/* -------------------------------------------------------------- soundboard */
+
+.soundboard-anchor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.soundboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+
+.soundboard {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 50;
+  width: 304px;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-main);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+
+.soundboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.sound-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bg-rail);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.sound-button:hover {
+  background: var(--bg-hover);
+}
+
+.sound-button.add {
+  color: var(--text-muted);
+}
+
+.sound-emoji {
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+.sound-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.soundboard-title {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.soundboard-form {
+  display: flex;
+  gap: 6px;
+}
+
+.soundboard-form .input {
+  min-width: 0;
+}
+
+.soundboard-form .input.emoji {
+  width: 48px;
+  text-align: center;
+}
+
+.soundboard-form .input.name {
+  flex: 1;
+}
