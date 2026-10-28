@@ -24,6 +24,9 @@ export const LIMITS = {
   attachmentsPerMessage: 4,
   attachmentMaxBytes: 10 * 1024 * 1024,
   avatarMaxBytes: 25 * 1024 * 1024,
+  /** Songs waiting in a voice room's queue (the one playing isn't counted). */
+  musicQueue: 50,
+  musicSearchMax: 200,
 } as const;
 
 // One emoji: pictographs plus the joiners, variation selectors, skin tones and keycaps that
@@ -34,6 +37,44 @@ const EMOJI_PATTERN =
 /** Whether `text` is a single emoji, as reactions require. */
 export function isReactionEmoji(text: string): boolean {
   return text.length <= 32 && EMOJI_PATTERN.test(text);
+}
+
+/**
+ * The video id of a YouTube link (watch, youtu.be, shorts, embed, live, music.youtube.com),
+ * or null for anything else.
+ */
+export function parseYouTubeUrl(raw: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+  const host = url.hostname.replace(/^(www|m|music)\./, '');
+  let id: string | null = null;
+  if (host === 'youtu.be') id = url.pathname.slice(1);
+  else if (host === 'youtube.com') {
+    id =
+      url.pathname === '/watch'
+        ? url.searchParams.get('v')
+        : (/^\/(?:shorts|embed|live)\/([^/]+)/.exec(url.pathname)?.[1] ?? null);
+  }
+  return id && /^[\w-]{6,20}$/.test(id) ? id : null;
+}
+
+/** A Spotify track link (open.spotify.com/track/…), which only helps to find the song's title. */
+export function isSpotifyTrackUrl(raw: string): boolean {
+  try {
+    const url = new URL(raw);
+    return (
+      url.protocol === 'https:' &&
+      url.hostname === 'open.spotify.com' &&
+      /^\/(?:intl-[\w-]+\/)?track\/\w+/.test(url.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** LiveKit room name for a voice channel. */

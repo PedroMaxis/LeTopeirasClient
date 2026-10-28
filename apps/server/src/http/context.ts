@@ -6,7 +6,9 @@ import { forbidden, unauthorized } from '../lib/errors';
 import { authenticate, type AuthContext } from '../services/auth';
 import type { EmbedService } from '../services/embeds';
 import type { FileStore } from '../services/files';
+import type { MusicStore } from '../services/music';
 import type { VoiceStateStore } from '../services/voice-state';
+import type { YouTubeService } from '../services/youtube';
 import type { Gateway } from '../ws/gateway';
 
 /** Everything the route modules need, created once per app in buildApp. */
@@ -14,6 +16,8 @@ export interface AppContext {
   config: ServerConfig;
   db: Db;
   voice: VoiceStateStore;
+  music: MusicStore;
+  youtube: YouTubeService;
   gateway: Gateway;
   embeds: EmbedService;
   files: FileStore;

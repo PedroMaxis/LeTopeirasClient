@@ -95,6 +95,25 @@ const paths = {
   ),
   chat: <path d="M4 5h16v11H9l-5 4z" />,
   play: <path d="M8 5v14l11-7z" fill="currentColor" />,
+  pause: (
+    <>
+      <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
+      <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
+    </>
+  ),
+  skip: (
+    <>
+      <path d="M5 5v14l10-7z" fill="currentColor" />
+      <path d="M19 5v14" />
+    </>
+  ),
+  music: (
+    <>
+      <path d="M9 18V5l11-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="17" cy="16" r="3" />
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="7" />

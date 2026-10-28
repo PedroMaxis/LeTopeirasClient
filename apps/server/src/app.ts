@@ -9,6 +9,7 @@ import type { AppContext } from './http/context';
 import { authRoutes } from './http/routes/auth';
 import { channelRoutes } from './http/routes/channels';
 import { fileRoutes } from './http/routes/files';
+import { musicRoutes } from './http/routes/music';
 import { userRoutes } from './http/routes/users';
 import { voiceRoutes } from './http/routes/voice';
 import { AppError } from './lib/errors';
@@ -17,7 +18,9 @@ import { EmbedService, type PreviewFetcher } from './services/embeds';
 import { FileStore } from './services/files';
 import { fetchPreview } from './services/link-preview';
 import { createWebhookReceiver } from './services/livekit';
+import { MusicStore } from './services/music';
 import { VoiceStateStore } from './services/voice-state';
+import { fetchJson, YouTubeService, type JsonFetcher } from './services/youtube';
 import { Gateway } from './ws/gateway';
 
 export interface AppOptions extends FastifyServerOptions {
@@ -25,18 +28,36 @@ export interface AppOptions extends FastifyServerOptions {
   db: Db;
   /** Replaces the network fetch of link previews (tests). */
   fetchPreview?: PreviewFetcher;
+  /** Replaces the network calls of music search (tests). */
+  fetchJson?: JsonFetcher;
 }
 
 const apiError = (code: string, message: string): ApiError => ({ error: { code, message } });
 
-export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions }: AppOptions) {
+export function buildApp({
+  config,
+  db,
+  fetchPreview: fetcher,
+  fetchJson: jsonFetcher,
+  ...fastifyOptions
+}: AppOptions) {
   const app = Fastify({ bodyLimit: 64 * 1024, ...fastifyOptions });
 
   const voice = new VoiceStateStore();
   const files = new FileStore(config.uploadsDir);
+  const youtube = new YouTubeService({
+    apiKey: config.youtubeApiKey,
+    fetchJson: jsonFetcher ?? fetchJson,
+  });
+  const music: MusicStore = new MusicStore({
+    onChange: (channelId) => gateway.broadcastMusic(channelId),
+    onFailed: (channelId, track) => gateway.broadcastMusicFailed(channelId, track.title),
+  });
   const gateway: Gateway = new Gateway({
     db,
     voice,
+    music,
+    youtube,
     log: app.log,
     onMessageSaved: (message) => embeds.schedule(message),
     onFilesReleased: (hashes) =>
@@ -65,6 +86,8 @@ export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions 
     config,
     db,
     voice,
+    music,
+    youtube,
     gateway,
     embeds,
     files,
@@ -75,6 +98,7 @@ export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions 
   app.addHook('onClose', async () => {
     clearInterval(sweepTimer);
     embeds.close();
+    music.close();
     gateway.close();
   });
 
@@ -111,6 +135,7 @@ export function buildApp({ config, db, fetchPreview: fetcher, ...fastifyOptions 
     channelRoutes(scope, ctx);
     userRoutes(scope, ctx);
     voiceRoutes(scope, ctx);
+    musicRoutes(scope, ctx);
     fileRoutes(scope, ctx);
   });
 

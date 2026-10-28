@@ -135,3 +135,41 @@ export const readStateSchema = z.object({
   lastReadMessageId: idSchema,
 });
 export type ReadState = z.infer<typeof readStateSchema>;
+
+/** A YouTube video as search and the queue describe it. */
+export const musicVideoSchema = z.object({
+  videoId: z.string().regex(/^[\w-]{6,20}$/),
+  title: z.string(),
+  author: z.string(),
+  /** null for live streams, and when the server has no YouTube key (oEmbed has no duration). */
+  durationMs: z.number().int().positive().nullable(),
+  thumbnailUrl: z.string(),
+});
+export type MusicVideo = z.infer<typeof musicVideoSchema>;
+
+export const musicTrackSchema = musicVideoSchema.extend({
+  /** Unique per queued song, so the same video can be queued twice. */
+  id: idSchema,
+  addedBy: idSchema,
+});
+export type MusicTrack = z.infer<typeof musicTrackSchema>;
+
+export const musicCurrentSchema = z.object({
+  track: musicTrackSchema,
+  paused: z.boolean(),
+  /** Where the song was at `at`. */
+  positionMs: z.number().int().nonnegative(),
+  /** Server clock (ms) when `positionMs` was taken. */
+  at: z.number(),
+});
+export type MusicCurrent = z.infer<typeof musicCurrentSchema>;
+
+/** What is playing in a voice room and what comes next. */
+export const musicChannelStateSchema = z.object({
+  channelId: idSchema,
+  current: musicCurrentSchema.nullable(),
+  queue: z.array(musicTrackSchema),
+  /** Server clock (ms) when this was sent; clients derive their offset from it. */
+  serverNow: z.number(),
+});
+export type MusicChannelState = z.infer<typeof musicChannelStateSchema>;

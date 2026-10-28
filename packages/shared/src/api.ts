@@ -8,6 +8,7 @@ import {
   channelTypeSchema,
   idSchema,
   messageSchema,
+  musicVideoSchema,
   roleSchema,
   userSchema,
   type Attachment,
@@ -198,3 +199,7 @@ export const apiErrorSchema = z.object({
   }),
 });
 export type ApiError = z.infer<typeof apiErrorSchema>;
+
+/** GET /music/search?q= — text, a YouTube link or a Spotify track link. */
+export const musicSearchResponseSchema = z.object({ results: z.array(musicVideoSchema) });
+export type MusicSearchResponse = z.infer<typeof musicSearchResponseSchema>;

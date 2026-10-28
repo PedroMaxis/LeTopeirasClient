@@ -4,6 +4,7 @@ import { canAccess } from '../lib/roles';
 import { syncTaskbarBadge } from '../lib/taskbar';
 import { showToast } from '../lib/toast';
 import { ChatClient } from './chat';
+import { MusicClient } from './music';
 import { VoiceClient } from './voice';
 
 const IDLE_AFTER_SECONDS = 10 * 60;
@@ -14,6 +15,7 @@ export class Session {
   readonly api: Api;
   readonly chat: ChatClient;
   readonly voice: VoiceClient;
+  readonly music: MusicClient;
   private disposed = false;
   private readonly idleTimer: ReturnType<typeof setInterval>;
   private readonly stopTaskbarBadge: () => void;
@@ -30,6 +32,8 @@ export class Session {
     this.voice = new VoiceClient(this.api, (muted, deafened, watching) =>
       this.chat.reportVoiceState(muted, deafened, watching),
     );
+
+    this.music = new MusicClient(this.api, this.chat, this.voice);
 
     // After a gateway reconnect the server may have restarted and forgotten our mute state.
     let lastStatus = this.chat.store.get().status;
@@ -88,6 +92,7 @@ export class Session {
     this.disposed = true;
     clearInterval(this.idleTimer);
     this.stopTaskbarBadge();
+    this.music.dispose();
     this.voice.dispose();
     this.chat.close();
     void window.api.clearSession();

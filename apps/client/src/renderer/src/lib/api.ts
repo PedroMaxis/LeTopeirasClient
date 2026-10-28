@@ -11,8 +11,10 @@ import {
   type InviteResponse,
   type LoginRequest,
   messageHistoryResponseSchema,
+  musicSearchResponseSchema,
   searchResponseSchema,
   type MessageHistoryResponse,
+  type MusicVideo,
   type SearchQuery,
   type SearchResponse,
   type RegisterRequest,
@@ -163,6 +165,11 @@ export class Api {
     }
     return searchResponseSchema.parse(await this.call('GET', `/search?${params}`));
   };
+
+  musicSearch = async (q: string): Promise<MusicVideo[]> =>
+    musicSearchResponseSchema.parse(
+      await this.call('GET', `/music/search?${new URLSearchParams({ q })}`),
+    ).results;
 
   voiceToken = (channelId: number) =>
     this.call<VoiceTokenResponse>('POST', '/voice/token', { channelId });

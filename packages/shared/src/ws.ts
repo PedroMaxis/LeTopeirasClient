@@ -6,6 +6,7 @@ import {
   channelSchema,
   idSchema,
   messageSchema,
+  musicChannelStateSchema,
   presenceStatusSchema,
   reactionSchema,
   readStateSchema,
@@ -71,6 +72,33 @@ export const clientEventSchema = z.discriminatedUnion('type', [
       watching: z.array(idSchema).max(50).optional(),
     }),
   }),
+  // "Ouvir junto": anyone in the voice room controls its music.
+  z.object({
+    type: z.literal('music.add'),
+    data: z.object({ channelId: idSchema, videoId: z.string().regex(/^[\w-]{6,20}$/) }),
+  }),
+  z.object({
+    type: z.literal('music.remove'),
+    data: z.object({ channelId: idSchema, trackId: idSchema }),
+  }),
+  z.object({ type: z.literal('music.play'), data: z.object({ channelId: idSchema }) }),
+  z.object({ type: z.literal('music.pause'), data: z.object({ channelId: idSchema }) }),
+  z.object({
+    type: z.literal('music.seek'),
+    data: z.object({ channelId: idSchema, positionMs: z.number().int().nonnegative() }),
+  }),
+  z.object({ type: z.literal('music.skip'), data: z.object({ channelId: idSchema }) }),
+  z.object({ type: z.literal('music.clear'), data: z.object({ channelId: idSchema }) }),
+  /** The player reached the end of `trackId` (the server ignores it when too early). */
+  z.object({
+    type: z.literal('music.ended'),
+    data: z.object({ channelId: idSchema, trackId: idSchema }),
+  }),
+  /** The player could not play `trackId` (embedding blocked, removed…). */
+  z.object({
+    type: z.literal('music.failed'),
+    data: z.object({ channelId: idSchema, trackId: idSchema }),
+  }),
 ]);
 export type ClientEvent = z.infer<typeof clientEventSchema>;
 export type ClientEventInput = z.input<typeof clientEventSchema>;
@@ -91,6 +119,8 @@ export const readyEventDataSchema = z.object({
   readStates: z.array(readStateSchema),
   /** Unread messages that mention you, per channel (channels with none are left out). */
   mentions: z.array(z.object({ channelId: idSchema, count: z.number().int().positive() })),
+  /** Music playing in the voice rooms (rooms with nothing are left out). */
+  music: z.array(musicChannelStateSchema).default([]),
 });
 export type ReadyEventData = z.infer<typeof readyEventDataSchema>;
 
@@ -123,6 +153,12 @@ export const serverEventSchema = z.discriminatedUnion('type', [
     data: z.object({ channelId: idSchema, userId: idSchema }),
   }),
   z.object({ type: z.literal('voice.state'), data: voiceChannelStateSchema }),
+  z.object({ type: z.literal('music.state'), data: musicChannelStateSchema }),
+  /** The song could not be played and was skipped. */
+  z.object({
+    type: z.literal('music.failed'),
+    data: z.object({ channelId: idSchema, title: z.string() }),
+  }),
   z.object({ type: z.literal('user.created'), data: z.object({ user: userSchema }) }),
   /** Display name or tags changed. */
   z.object({ type: z.literal('user.updated'), data: z.object({ user: userSchema }) }),

@@ -12,7 +12,7 @@ import {
 } from '@letopeiras/shared';
 import type { FastifyBaseLogger } from 'fastify';
 import type { Db } from '../db';
-import { AppError, tooManyRequests } from '../lib/errors';
+import { AppError, badRequest, tooManyRequests } from '../lib/errors';
 import { RateLimiter } from '../lib/rate-limit';
 import { listCategories } from '../repo/categories';
 import { findChannel, listChannels } from '../repo/channels';
@@ -20,7 +20,7 @@ import { unreadMentionCounts } from '../repo/messages';
 import { listReadStates } from '../repo/read-state';
 import { listRoles } from '../repo/roles';
 import { findUserById, listUsers } from '../repo/users';
-import { canAccess, channelForViewer } from '../services/access';
+import { canAccess, channelForViewer, requireAccess } from '../services/access';
 import { authenticate } from '../services/auth';
 import {
   editMessage,
@@ -30,7 +30,9 @@ import {
   requireTextChannel,
   sendMessage,
 } from '../services/messages';
+import { notInRoom, type MusicStore } from '../services/music';
 import type { VoiceStateStore } from '../services/voice-state';
+import type { YouTubeService } from '../services/youtube';
 
 const AUTH_TIMEOUT_MS = 10_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
@@ -51,6 +53,8 @@ interface Connection {
 export interface GatewayDeps {
   db: Db;
   voice: VoiceStateStore;
+  music: MusicStore;
+  youtube: YouTubeService;
   log: FastifyBaseLogger;
   /** A message was sent or edited (link previews get fetched). */
   onMessageSaved?: (message: Message) => void;
@@ -73,6 +77,8 @@ export class Gateway {
   // Reactions per user: clicking around is fine, scripting floods isn't.
   private readonly reactionLimiter = new RateLimiter(20, 10_000);
   // At most one typing broadcast per user and channel every 3 s.
+  // Music controls per user (a seek slider can fire quickly, adding costs a YouTube call).
+  private readonly musicLimiter = new RateLimiter(20, 10_000);
   private readonly typingLimiter = new RateLimiter(1, 3_000);
   private readonly heartbeat: NodeJS.Timeout;
 
@@ -167,12 +173,29 @@ export class Gateway {
   broadcastVoice(channelIds: Iterable<number>): void {
     for (const channelId of new Set(channelIds)) {
       const channel = findChannel(this.deps.db, channelId);
-      if (channel) {
-        this.broadcastToChannel(channel, {
-          type: 'voice.state',
-          data: this.deps.voice.get(channelId),
-        });
-      }
+      const state = this.deps.voice.get(channelId);
+      // The room's queue is dropped a minute after the last person leaves.
+      this.deps.music.roomChanged(channelId, state.participants.length);
+      if (channel) this.broadcastToChannel(channel, { type: 'voice.state', data: state });
+    }
+  }
+
+  /** The room's music changed (or was dropped): tell everyone who can see the channel. */
+  broadcastMusic(channelId: number): void {
+    const channel = findChannel(this.deps.db, channelId);
+    if (channel) {
+      this.broadcastToChannel(channel, {
+        type: 'music.state',
+        data: this.deps.music.get(channelId),
+      });
+    }
+  }
+
+  /** A song was skipped because it couldn't be played. */
+  broadcastMusicFailed(channelId: number, title: string): void {
+    const channel = findChannel(this.deps.db, channelId);
+    if (channel) {
+      this.broadcastToChannel(channel, { type: 'music.failed', data: { channelId, title } });
     }
   }
 
@@ -243,7 +266,7 @@ export class Gateway {
   }
 
   private readyFor(user: User): ReadyEventData {
-    const { db, voice } = this.deps;
+    const { db, voice, music } = this.deps;
     const channels = listChannels(db);
     const accessible = new Set(channels.filter((c) => canAccess(user, c)).map((c) => c.id));
     return {
@@ -259,6 +282,7 @@ export class Gateway {
       voiceStates: voice.all().filter((v) => accessible.has(v.channelId)),
       readStates: listReadStates(db, user.id),
       mentions: unreadMentionCounts(db, user.id).filter((m) => accessible.has(m.channelId)),
+      music: music.all().filter((m) => accessible.has(m.channelId)),
     };
   }
 
@@ -307,17 +331,41 @@ export class Gateway {
     try {
       this.handle(conn, event);
     } catch (err) {
-      if (err instanceof AppError) {
-        this.sendError(conn, err, event.type);
-      } else {
-        this.deps.log.error({ err, event: event.type }, 'WebSocket handler failed');
-        this.sendError(conn, new AppError(500, 'internal', 'Erro interno do servidor'), event.type);
-      }
+      this.fail(conn, err, event.type);
     }
   }
 
+  /** Answers a failed handler: our own errors as they are, anything else as a 500. */
+  private fail(conn: Connection, err: unknown, type: string): void {
+    if (err instanceof AppError) {
+      this.sendError(conn, err, type);
+    } else {
+      this.deps.log.error({ err, event: type }, 'WebSocket handler failed');
+      this.sendError(conn, new AppError(500, 'internal', 'Erro interno do servidor'), type);
+    }
+  }
+
+  /** The voice room `user` is in right now (and may open), or throws. */
+  private requireInRoom(user: User, channelId: number): Channel {
+    const channel = requireAccess(this.deps.db, user, channelId);
+    if (channel.type !== 'voice') throw badRequest('Esse canal não é de voz', 'not_voice_channel');
+    if (!this.deps.voice.get(channelId).participants.some((p) => p.userId === user.id)) {
+      throw notInRoom();
+    }
+    return channel;
+  }
+
+  /** `music.add`: the video's details come from YouTube, so it finishes later than `handle`. */
+  private async addMusic(conn: Connection, channelId: number, videoId: string): Promise<void> {
+    const { user } = conn;
+    const video = await this.deps.youtube.video(videoId);
+    // They may have left (or lost access) while we asked YouTube.
+    this.requireInRoom(conn.user, channelId);
+    this.deps.music.add(channelId, video, user.id);
+  }
+
   private handle(conn: Connection, event: ClientEvent): void {
-    const { db, voice } = this.deps;
+    const { db, voice, music } = this.deps;
     const { user } = conn;
 
     const isMessageEvent =
@@ -329,7 +377,9 @@ export class Gateway {
       ? this.messageLimiter
       : isReaction
         ? this.reactionLimiter
-        : this.eventLimiter;
+        : event.type.startsWith('music.')
+          ? this.musicLimiter
+          : this.eventLimiter;
     if (!limiter.consume(String(user.id))) throw tooManyRequests();
 
     switch (event.type) {
@@ -427,6 +477,45 @@ export class Gateway {
             event.data.watching ?? [],
           ),
         );
+        return;
+
+      case 'music.add':
+        this.requireInRoom(user, event.data.channelId);
+        this.addMusic(conn, event.data.channelId, event.data.videoId).catch((err: unknown) =>
+          this.fail(conn, err, event.type),
+        );
+        return;
+      case 'music.remove':
+        this.requireInRoom(user, event.data.channelId);
+        music.remove(event.data.channelId, event.data.trackId);
+        return;
+      case 'music.play':
+        this.requireInRoom(user, event.data.channelId);
+        music.play(event.data.channelId);
+        return;
+      case 'music.pause':
+        this.requireInRoom(user, event.data.channelId);
+        music.pause(event.data.channelId);
+        return;
+      case 'music.seek':
+        this.requireInRoom(user, event.data.channelId);
+        music.seek(event.data.channelId, event.data.positionMs);
+        return;
+      case 'music.skip':
+        this.requireInRoom(user, event.data.channelId);
+        music.skip(event.data.channelId);
+        return;
+      case 'music.clear':
+        this.requireInRoom(user, event.data.channelId);
+        music.clear(event.data.channelId);
+        return;
+      case 'music.ended':
+        this.requireInRoom(user, event.data.channelId);
+        music.ended(event.data.channelId, event.data.trackId);
+        return;
+      case 'music.failed':
+        this.requireInRoom(user, event.data.channelId);
+        music.failed(event.data.channelId, event.data.trackId);
         return;
     }
   }

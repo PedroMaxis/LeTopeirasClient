@@ -66,6 +66,8 @@ const settingsSchema = z.object({
   channelNotify: z.record(z.string(), z.enum(['all', 'mentions', 'none'])).default({}),
   /** Local only: no toasts, message sounds or taskbar flashing (others still see you online). */
   doNotDisturb: z.boolean().default(false),
+  /** Volume of the room's music in percent (0–100). The embed can't use the output device setting. */
+  musicVolume: z.number().int().min(0).max(100).default(60),
   /** Per-user voice volume in percent (0–200), keyed by user id. */
   userVolumes: z.record(z.string(), z.number().min(0).max(200)).default({}),
   /** Per-user screen share audio volume in percent (0–200), keyed by user id. */

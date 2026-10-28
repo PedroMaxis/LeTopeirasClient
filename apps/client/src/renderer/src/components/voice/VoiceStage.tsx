@@ -19,6 +19,7 @@ import { showToast } from '../../lib/toast';
 import { useSession } from '../../state/session';
 import { isWatching } from '../../state/voice';
 import { ChatPanel } from '../chat/ChatPanel';
+import { MusicPanel } from '../music/MusicPanel';
 import type { LayoutActions } from '../MainLayout';
 import { usePersonMenu } from '../PersonMenu';
 import { Avatar } from '../ui/Avatar';
@@ -182,6 +183,11 @@ export function VoiceStage({
   const users = useStore(chat.store, (s) => s.users);
   const voiceState = useStore(chat.store, (s) => s.voice[channel.id]);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [musicOpen, setMusicOpen] = useState(false);
+  const playing = useStore(
+    chat.store,
+    (s) => s.music[channel.id]?.current !== undefined && s.music[channel.id]?.current !== null,
+  );
   const personMenu = usePersonMenu();
   // State, not a ref: the grid element comes and goes with focus mode.
   const [grid, setGrid] = useState<HTMLDivElement | null>(null);
@@ -292,6 +298,14 @@ export function VoiceStage({
             </button>
           )}
           <IconButton
+            icon="music"
+            size={22}
+            label={musicOpen ? 'Esconder a música' : playing ? 'Música (tocando)' : 'Música'}
+            active={musicOpen || playing}
+            disabled={status !== 'connected'}
+            onClick={() => setMusicOpen((open) => !open)}
+          />
+          <IconButton
             icon="chat"
             size={22}
             label={chatPanel.open ? 'Esconder o chat' : 'Mostrar o chat'}
@@ -389,6 +403,10 @@ export function VoiceStage({
             />
           </div>
         </div>
+        {/* Not while hidden: the player then floats in the corner instead. */}
+        {musicOpen && !hidden && (
+          <MusicPanel channelId={channel.id} onClose={() => setMusicOpen(false)} />
+        )}
         {/* Not while hidden: the text view has its own composer for the same channel. */}
         {chatPanel.open && chatPanel.channel && !hidden && (
           <ChatPanel

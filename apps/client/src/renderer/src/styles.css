@@ -4623,3 +4623,236 @@ button.tag-chip:hover {
   color: var(--text-head);
   font-weight: 800;
 }
+
+/* ------------------------------------------------------------------ music */
+
+.voice-music {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 32px;
+  height: 24px;
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.voice-music span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-panel {
+  width: 380px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-main);
+  border-left: 1px solid var(--bg-rail);
+}
+
+.music-panel-title {
+  flex: 1;
+}
+
+.music-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+/* The YouTube player floats over this box (it must stay at least 200x200 and visible). */
+.music-slot {
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--bg-rail);
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.music-player {
+  position: fixed;
+  z-index: 40;
+  overflow: hidden;
+  background: #000;
+  border-radius: 8px;
+}
+
+.music-player.mini {
+  right: 16px;
+  bottom: 16px;
+  width: 356px;
+  background: var(--bg-side);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 40%);
+}
+
+.music-frame {
+  display: block;
+  border: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.music-player.mini .music-frame {
+  height: 200px;
+}
+
+.music-mini-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 0 4px 0 12px;
+}
+
+.music-mini-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.music-now-title {
+  font-weight: 600;
+  color: var(--text-head);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-now-author {
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.music-bar {
+  flex: 1;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--track);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.music-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.music-bar-unknown {
+  flex: 1;
+  text-align: center;
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.music-controls .slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.music-search {
+  display: flex;
+  gap: 4px;
+}
+
+.music-search .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.music-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.music-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.music-list-head {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.music-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.music-row img {
+  flex: none;
+  width: 64px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--bg-rail);
+}
+
+.music-row-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.music-row-title,
+.music-row-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.music-row-title {
+  font-size: 14px;
+}
+
+.music-row-sub {
+  color: var(--text-muted);
+  font-size: 12px;
+}

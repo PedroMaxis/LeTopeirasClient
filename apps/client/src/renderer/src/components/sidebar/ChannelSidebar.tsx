@@ -196,6 +196,8 @@ function ChannelItem({
   const readStates = useStore(chat.store, (s) => s.readStates);
   const mentions = useStore(chat.store, (s) => s.mentionCounts[channel.id] ?? 0);
   const participants = useStore(chat.store, (s) => s.voice[channel.id]);
+  const playing = useStore(chat.store, (s) => s.music[channel.id]?.current);
+  const users = useStore(chat.store, (s) => s.users);
   const inVoice = useStore(voice.store, (s) => s.channelId);
   const silenced = useStore(settings, (s) => s.channelNotify[channel.id] === 'none');
 
@@ -262,6 +264,19 @@ function ChannelItem({
           channel.isPrivate && <Icon name="lock" size={14} className="channel-lock" />
         )}
       </button>
+      {kind === 'voice' && !locked && playing && (
+        <div
+          className="voice-music"
+          title={`${playing.track.title} — ${playing.track.author}${
+            users[playing.track.addedBy]
+              ? ` (adicionada por ${users[playing.track.addedBy]?.displayName})`
+              : ''
+          }`}
+        >
+          <Icon name="music" size={14} />
+          <span>{playing.track.title}</span>
+        </div>
+      )}
       {kind === 'voice' &&
         !locked &&
         participants?.map((p) => (

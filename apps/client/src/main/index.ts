@@ -15,6 +15,7 @@ import { registerSystemAudio } from './system-audio';
 import { createTray, showWindow } from './tray';
 import { registerVoiceControls } from './voice-controls';
 import { registerUpdater } from './updater';
+import { registerYouTubeReferer } from './youtube-referer';
 import { registerVoiceResume } from './voice-resume';
 import { restoreWindowState, trackWindowState } from './window-state';
 import { attachZoom } from './zoom';
@@ -177,6 +178,7 @@ if (!app.requestSingleInstanceLock()) {
   void app.whenReady().then(() => {
     registerDiagnostics(() => mainWindow);
     configurePermissions(session.defaultSession);
+    registerYouTubeReferer(session.defaultSession, __SERVER_URL__);
     registerScreenCapture(session.defaultSession);
     registerSessionStore();
     registerSystemAudio();

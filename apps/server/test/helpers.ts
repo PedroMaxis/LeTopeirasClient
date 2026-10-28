@@ -16,6 +16,7 @@ import { hashPassword } from '../src/lib/crypto';
 import { createInvite } from '../src/repo/invites';
 import { createUser } from '../src/repo/users';
 import type { PreviewFetcher } from '../src/services/embeds';
+import type { JsonFetcher } from '../src/services/youtube';
 
 export const testConfig: ServerConfig = {
   host: '127.0.0.1',
@@ -30,6 +31,7 @@ export const testConfig: ServerConfig = {
     apiSecret: 'test-secret-that-is-long-enough-for-hs256',
   },
   sessionTtlMs: 24 * 60 * 60 * 1000,
+  youtubeApiKey: undefined,
   logLevel: 'silent',
 };
 
@@ -37,15 +39,19 @@ export const PASSWORD = 'correct horse battery';
 
 /**
  * A fresh app over an in-memory database (seeded with #geral = 1 and voice Geral = 2).
- * Link previews never touch the network: they come from `fetchPreview` (none by default).
+ * Link previews and music search never touch the network: they come from `fetchPreview` and
+ * `fetchJson` (none by default).
  */
-export async function createTestApp(options: { fetchPreview?: PreviewFetcher } = {}) {
+export async function createTestApp(
+  options: { fetchPreview?: PreviewFetcher; fetchJson?: JsonFetcher; youtubeApiKey?: string } = {},
+) {
   const db = openDatabase(':memory:');
   const uploadsDir = mkdtempSync(join(tmpdir(), 'letopeiras-uploads-'));
   const app = buildApp({
-    config: { ...testConfig, uploadsDir },
+    config: { ...testConfig, uploadsDir, youtubeApiKey: options.youtubeApiKey },
     db,
     fetchPreview: options.fetchPreview ?? (() => Promise.resolve(null)),
+    fetchJson: options.fetchJson ?? (() => Promise.reject(new Error('No network in tests'))),
   });
   await app.ready();
 

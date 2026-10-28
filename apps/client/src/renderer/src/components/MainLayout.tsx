@@ -12,6 +12,7 @@ import { ChatView } from './chat/ChatView';
 import { jumpToMessage } from './chat/events';
 import { SearchPanel, type SearchRequest } from './chat/SearchPanel';
 import { MemberList } from './MemberList';
+import { MusicPlayer } from './music/MusicPlayer';
 import { QuickSwitcher } from './QuickSwitcher';
 import { ShortcutsDialog } from './ShortcutsDialog';
 import { ScreenPicker } from './ScreenPicker';
@@ -300,6 +301,7 @@ export function MainLayout() {
         />
       )}
       {pickerOpen && <ScreenPicker onClose={() => setPickerOpen(false)} />}
+      <MusicPlayer />
       <WhatsNew />
       {switcherOpen && (
         <QuickSwitcher

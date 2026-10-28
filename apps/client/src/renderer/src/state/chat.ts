@@ -4,7 +4,9 @@ import {
   TYPING_TIMEOUT_MS,
   type Category,
   type Channel,
+  type ClientEventInput,
   type Message,
+  type MusicChannelState,
   type Role,
   type ServerEvent,
   type User,
@@ -50,6 +52,16 @@ export interface MessageAttachments {
 
 const revokePreviews = (p: PendingMessage) => p.previews.forEach((url) => URL.revokeObjectURL(url));
 
+/** A voice room's music, with how far the server's clock is from ours when it arrived. */
+export interface MusicRoom extends MusicChannelState {
+  offset: number;
+}
+
+const musicRoom = (state: MusicChannelState): MusicRoom => ({
+  ...state,
+  offset: state.serverNow - Date.now(),
+});
+
 export interface ChatState {
   status: GatewayStatus;
   me: User | null;
@@ -61,6 +73,8 @@ export interface ChatState {
   /** Connected users and whether they're away ("Ausente"); missing = offline. */
   presence: ReadonlyMap<number, 'online' | 'idle'>;
   voice: Record<number, VoiceParticipant[]>;
+  /** What plays in each voice room that has something. */
+  music: Record<number, MusicRoom>;
   readStates: Record<number, number>;
   /** Unread messages that mention us, per channel. */
   mentionCounts: Record<number, number>;
@@ -90,6 +104,7 @@ export class ChatClient {
     roles: [],
     presence: new Map(),
     voice: {},
+    music: {},
     readStates: {},
     mentionCounts: {},
     messages: {},
@@ -290,6 +305,7 @@ export class ChatClient {
           voiceStates,
           readStates,
           mentions,
+          music,
         } = event.data;
         // Anything could have happened while we were away; history is fetched again.
         this.store.set({
@@ -300,6 +316,7 @@ export class ChatClient {
           roles: sortByPosition(roles),
           presence: new Map(presence.map((p) => [p.userId, p.status])),
           voice: Object.fromEntries(voiceStates.map((v) => [v.channelId, v.participants])),
+          music: Object.fromEntries(music.map((m) => [m.channelId, musicRoom(m)])),
           readStates: Object.fromEntries(readStates.map((r) => [r.channelId, r.lastReadMessageId])),
           mentionCounts: Object.fromEntries(mentions.map((m) => [m.channelId, m.count])),
           messages: {},
@@ -438,6 +455,16 @@ export class ChatClient {
         }));
         return;
 
+      case 'music.state':
+        this.store.set((s) => ({
+          music: { ...s.music, [event.data.channelId]: musicRoom(event.data) },
+        }));
+        return;
+
+      case 'music.failed':
+        showToast(`Não deu para tocar "${event.data.title}"`);
+        return;
+
       case 'user.created':
       case 'user.updated': {
         const { user } = event.data;
@@ -527,6 +554,11 @@ export class ChatClient {
       },
     });
     if (!sent) this.updatePending(pending.nonce, { failed: true });
+  }
+
+  /** A music action (the server ignores it from someone who isn't in the room). */
+  sendMusic(event: ClientEventInput): void {
+    this.sendOrWarn(event);
   }
 
   private sendOrWarn(event: Parameters<Gateway['send']>[0]): void {

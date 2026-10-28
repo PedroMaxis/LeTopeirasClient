@@ -3,7 +3,7 @@ import http, { type IncomingMessage } from 'node:http';
 import https from 'node:https';
 import { BlockList, isIP, isIPv4, type LookupFunction } from 'node:net';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
-import type { Embed } from '@letopeiras/shared';
+import { parseYouTubeUrl, type Embed } from '@letopeiras/shared';
 
 /** Previews per message. */
 export const MAX_EMBEDS = 3;
@@ -37,24 +37,7 @@ export function previewUrls(content: string): string[] {
 }
 
 /** The video id of a YouTube watch, short, embed or youtu.be link. */
-export function youtubeId(raw: string): string | null {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return null;
-  }
-  const host = url.hostname.replace(/^(www|m|music)\./, '');
-  let id: string | null = null;
-  if (host === 'youtu.be') id = url.pathname.slice(1);
-  else if (host === 'youtube.com') {
-    id =
-      url.pathname === '/watch'
-        ? url.searchParams.get('v')
-        : (/^\/(?:shorts|embed|live)\/([^/]+)/.exec(url.pathname)?.[1] ?? null);
-  }
-  return id && /^[\w-]{6,20}$/.test(id) ? id : null;
-}
+export const youtubeId = parseYouTubeUrl;
 
 // ---------------------------------------------------------------------------
 // Where the server may connect (SSRF): never itself, the Oracle network or anything private.

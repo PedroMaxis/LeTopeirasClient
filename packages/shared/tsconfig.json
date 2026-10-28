@@ -1,4 +1,8 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // `URL` exists in Node and in the renderer; DOM is only there to type it.
+    "lib": ["ES2023", "DOM"]
+  },
   "include": ["src"]
 }

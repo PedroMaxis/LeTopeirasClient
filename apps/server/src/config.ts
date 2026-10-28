@@ -20,6 +20,11 @@ const envSchema = z.object({
   LIVEKIT_API_URL: z.string().url(),
   LIVEKIT_API_KEY: z.string().min(1),
   LIVEKIT_API_SECRET: z.string().min(1),
+  /** YouTube Data API v3 key for music search; without it only links work (no duration). */
+  YOUTUBE_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });
@@ -31,6 +36,7 @@ export interface ServerConfig {
   uploadsDir: string;
   trustProxy: boolean;
   livekit: { url: string; apiUrl: string; apiKey: string; apiSecret: string };
+  youtubeApiKey: string | undefined;
   sessionTtlMs: number;
   logLevel: string;
 }
@@ -54,6 +60,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       apiKey: e.LIVEKIT_API_KEY,
       apiSecret: e.LIVEKIT_API_SECRET,
     },
+    youtubeApiKey: e.YOUTUBE_API_KEY,
     sessionTtlMs: e.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
     logLevel: e.LOG_LEVEL,
   };
