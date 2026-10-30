@@ -2,8 +2,8 @@ name: Release
 
 # Push a tag matching the client version (apps/client/package.json), e.g.:
 #   git tag v0.1.0 && git push origin v0.1.0
-# The installer and latest.yml are published to GitHub Releases, where the
-# installed apps pick them up (electron-updater).
+# The Windows installer (latest.yml) and the Linux AppImage/.deb (latest-linux.yml) are
+# published to GitHub Releases, where the installed apps pick them up (electron-updater).
 on:
   push:
     tags: ['v*']
@@ -12,8 +12,23 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Publish Windows release
+  # electron-builder uploads its files in parallel; when the release doesn't exist yet,
+  # they can race and create duplicate releases for the same tag (which makes the
+  # download links 404). Create it up front as a draft, so installed apps never see a
+  # release that is still missing files, and publish it once both platforms are up.
+  draft:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create draft release
+        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "${GITHUB_REF_NAME#v}" --notes "LeTopeiras Client ${GITHUB_REF_NAME#v}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+
+  windows:
+    name: Windows build
+    needs: draft
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -33,20 +48,43 @@ jobs:
           fi
       - run: pnpm typecheck
       - run: pnpm test
-      # electron-builder uploads its files in parallel; when the release doesn't exist yet,
-      # they can race and create duplicate releases for the same tag (which makes the
-      # download links 404). Create it up front as a draft, so installed apps never see a
-      # release that is still missing files, and publish it at the end.
-      - name: Create draft release
-        shell: bash
-        run: gh release create "$GITHUB_REF_NAME" --draft --verify-tag --title "${GITHUB_REF_NAME#v}" --notes "LeTopeiras Client ${GITHUB_REF_NAME#v}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm --filter @letopeiras/client release:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish release
+
+  linux:
+    name: Linux build
+    needs: draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check the tag matches the client version
         shell: bash
+        run: |
+          version=$(node -p "require('./apps/client/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match apps/client/package.json version $version"
+            exit 1
+          fi
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm --filter @letopeiras/client release:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    name: Publish release
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish release
         run: gh release edit "$GITHUB_REF_NAME" --draft=false --latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}

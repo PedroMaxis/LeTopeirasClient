@@ -6,6 +6,19 @@ import { assertTrustedSender, isTrustedUrl } from './renderer';
 const SELECTION_TTL_MS = 30_000;
 const THUMBNAIL_SIZE = { width: 320, height: 180 };
 
+/**
+ * On Wayland the compositor's portal owns the picker and hides window ids, so our own list
+ * is replaced by one entry per tab that opens the portal dialog.
+ */
+const isWayland = process.platform === 'linux' && process.env['XDG_SESSION_TYPE'] === 'wayland';
+const PORTAL_SOURCES: ScreenSource[] = (['window', 'screen'] as const).map((kind) => ({
+  id: `${kind}:portal`,
+  name: 'Escolher no seletor do sistema',
+  kind,
+  thumbnail: '',
+  appIcon: null,
+}));
+
 const sourceIdSchema = z.string().regex(/^(screen|window):[\w:-]+$/);
 
 /** Source picked in our own UI, keyed by the webContents id that will call getDisplayMedia. */
@@ -14,6 +27,7 @@ const pendingSelections = new Map<number, { sourceId: string; expiresAt: number 
 export function registerScreenCapture(ses: Session): void {
   ipcMain.handle(IpcChannel.GetScreenSources, async (event): Promise<ScreenSource[]> => {
     assertTrustedSender(event);
+    if (isWayland) return PORTAL_SOURCES;
     const sources = await desktopCapturer.getSources({
       types: ['screen', 'window'],
       thumbnailSize: THUMBNAIL_SIZE,
@@ -48,9 +62,10 @@ export function registerScreenCapture(ses: Session): void {
       desktopCapturer
         .getSources({ types: ['screen', 'window'], thumbnailSize: { width: 0, height: 0 } })
         .then((sources) => {
-          const source = sources.find((s) => s.id === selection.sourceId);
+          // The portal shows its own dialog and returns what was chosen there.
+          const source = isWayland ? sources[0] : sources.find((s) => s.id === selection.sourceId);
           if (!source) return reject();
-          // System audio is added in Phase 5 through the native loopback addon.
+          // System audio is captured apart (system-audio.ts) and published as its own track.
           callback({ video: source });
         })
         .catch(reject);

@@ -17,7 +17,7 @@ A private, self-hosted Discord-style app for a group of friends: text chat, voic
 - **Screen share:** 1080p60 H.264 with a custom source picker, "game" or "text" modes, and the PC's audio captured per app or for the whole system.
 - **Roles and private channels:** colored tags assigned by the admin. Private channels only open for members with one of their tags. Losing access applies immediately, including being removed from a voice call.
 - **Invite-only sign-up**, presence (online and idle), typing indicators, and automatic reconnection of both the chat socket and the media session.
-- **Desktop app:** frameless window, minimize to tray, start with Windows, and background auto-updates from GitHub Releases.
+- **Desktop app:** frameless window, minimize to tray, start with the system, and background auto-updates from GitHub Releases. Runs on Windows (installer) and Linux (AppImage, which auto-updates, or `.deb`).
 
 ## Engineering highlights
 
@@ -29,6 +29,10 @@ Capturing "what the PC is playing" naively also captures your friends' voices pl
 - **Window share:** captures **only** that window's process tree, so a game's sound goes out but a music player doesn't.
 
 The PCM (float32, 48 kHz stereo, 10 ms blocks) flows from main to renderer over a `MessagePort`, then into an `AudioWorklet` with a small jitter buffer, and is published to LiveKit as the screen share's audio track. Being N-API, the same binary loads in Node and Electron without rebuilding.
+
+### The same on Linux
+
+Linux has no process loopback API, so `apps/client/src/main/linux-audio.ts` does it with PipeWire/PulseAudio (`pactl` + `parec`): a private null sink receives the streams that should be shared, a loopback plays it on the real output, and its monitor is recorded as the same 10 ms float32 blocks the Windows addon produces. A window share (X11) moves only that window's process tree; a full-screen share moves everything except the app's own process tree. On Wayland the portal owns the picker and hides window ids, so both modes share the system sound minus the app's. Global push-to-talk and shortcuts are still Windows-only.
 
 ### Self-hosted SFU on a free ARM instance
 

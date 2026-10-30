@@ -1,6 +1,7 @@
 import { app, Menu, nativeImage, Tray, type BrowserWindow, type NativeImage } from 'electron';
 import { APP_NAME } from '@letopeiras/shared';
-import trayIconPath from '../../resources/tray.ico?asset';
+import trayIconIco from '../../resources/tray.ico?asset';
+import trayIconPng from '../../resources/tray.png?asset';
 import { IpcChannel, type TrayVoiceState, type VoiceAction } from '../shared/ipc';
 
 let tray: Tray | null = null;
@@ -17,6 +18,7 @@ export function showWindow(win: BrowserWindow): void {
 }
 
 const ICON_SIZE = 32;
+const trayIconPath = process.platform === 'win32' ? trayIconIco : trayIconPng;
 
 /**
  * The tray icon with a status dot in the bottom-right corner, drawn into the bitmap (BGRA on

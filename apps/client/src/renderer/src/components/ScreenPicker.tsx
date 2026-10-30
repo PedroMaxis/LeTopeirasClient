@@ -163,7 +163,7 @@ export function ScreenPicker({ onClose }: { onClose(): void }) {
               onDoubleClick={() => start(source.id)}
             >
               <span className="source-thumb">
-                <img src={source.thumbnail} alt="" />
+                {source.thumbnail && <img src={source.thumbnail} alt="" />}
               </span>
               <span className="source-name">
                 {source.appIcon && <img className="app-icon" src={source.appIcon} alt="" />}

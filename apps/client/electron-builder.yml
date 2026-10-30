@@ -9,16 +9,35 @@ files:
   - package.json
 asarUnpack:
   - '**/*.node'
-# Native loopback capture (native/audio-capture), loaded from process.resourcesPath.
-extraResources:
-  - from: ../../native/audio-capture/build/Release/audio_capture.node
-    to: audio_capture.node
 win:
   icon: build/icon.ico
+  # Native loopback capture (native/audio-capture), loaded from process.resourcesPath.
+  extraResources:
+    - from: ../../native/audio-capture/build/Release/audio_capture.node
+      to: audio_capture.node
   target:
     - target: nsis
       arch: [x64]
   artifactName: LeTopeiras-Client-Setup-${version}.${ext}
+# Linux captures audio through PipeWire/PulseAudio (pactl, parec), no native addon. Only the
+# AppImage auto-updates; the .deb is for installing by hand.
+linux:
+  icon: build/icon.png
+  executableName: letopeiras-client
+  syncDesktopName: true
+  category: Network
+  maintainer: LeTopeiras <letopeiras@users.noreply.github.com>
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  artifactName: LeTopeiras-Client-${version}.${ext}
+  desktop:
+    entry:
+      Name: LeTopeiras Client
+      Comment: Chat, voz e transmissão de tela do grupo
+      StartupWMClass: LeTopeiras Client
 nsis:
   oneClick: false
   perMachine: false

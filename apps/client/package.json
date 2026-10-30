@@ -5,6 +5,8 @@
   "private": true,
   "description": "LeTopeiras Client",
   "author": "LeTopeiras",
+  "homepage": "https://github.com/PedroMaxis/LeTopeirasClient",
+  "desktopName": "letopeiras-client.desktop",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "install-electron && pnpm --filter @letopeiras/audio-capture ensure && electron-vite dev",
@@ -13,6 +15,8 @@
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
     "dist:win": "pnpm --filter @letopeiras/audio-capture ensure && electron-vite build && electron-builder --win --publish never",
     "release:win": "pnpm --filter @letopeiras/audio-capture ensure && electron-vite build && electron-builder --win --publish always",
+    "dist:linux": "electron-vite build && electron-builder --linux --publish never",
+    "release:linux": "electron-vite build && electron-builder --linux --publish always",
     "test": "vitest run"
   },
   "devDependencies": {

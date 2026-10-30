@@ -1,8 +1,10 @@
 import { join } from 'node:path';
 import { app, BrowserWindow, ipcMain, nativeImage, powerMonitor, session, shell } from 'electron';
 import { APP_ID } from '@letopeiras/shared';
-import windowIconPath from '../../resources/tray.ico?asset';
+import windowIconIco from '../../resources/tray.ico?asset';
+import windowIconPng from '../../resources/tray.png?asset';
 import { IpcChannel, type AppInfo } from '../shared/ipc';
+import { getLaunchAtLogin, setLaunchAtLogin } from './autostart';
 import { attachContextMenu, registerSpellcheck } from './context-menu';
 import { registerDiagnostics, startCrashReporter } from './diagnostics';
 import { configurePermissions } from './permissions';
@@ -25,8 +27,9 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 startCrashReporter();
 
-/** Passed when Windows starts the app at login: stay in the tray instead of popping up. */
+/** Passed when the OS starts the app at login: stay in the tray instead of popping up. */
 const HIDDEN_ARG = '--hidden';
+const windowIconPath = process.platform === 'win32' ? windowIconIco : windowIconPng;
 /** The taskbar badge the renderer draws: a small PNG, nothing else. */
 const BADGE_URL = /^data:image\/png;base64,[A-Za-z0-9+/=]{1,40000}$/;
 const startHidden = process.argv.includes(HIDDEN_ARG);
@@ -68,7 +71,8 @@ function registerIpc(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle(IpcChannel.WindowSetBadge, (event, rawUrl: unknown, rawDescription: unknown) => {
     assertTrustedSender(event);
     const win = getWindow();
-    if (!win) return;
+    // The taskbar overlay is a Windows feature.
+    if (!win || process.platform !== 'win32') return;
     const url = typeof rawUrl === 'string' && BADGE_URL.test(rawUrl) ? rawUrl : null;
     const description = typeof rawDescription === 'string' ? rawDescription.slice(0, 100) : '';
     win.setOverlayIcon(url ? nativeImage.createFromDataURL(url) : null, description);
@@ -86,11 +90,11 @@ function registerIpc(getWindow: () => BrowserWindow | null): void {
 
   ipcMain.handle(IpcChannel.GetLaunchAtLogin, (event) => {
     assertTrustedSender(event);
-    return app.getLoginItemSettings({ args: [HIDDEN_ARG] }).openAtLogin;
+    return getLaunchAtLogin(HIDDEN_ARG);
   });
   ipcMain.handle(IpcChannel.SetLaunchAtLogin, (event, enabled: unknown) => {
     assertTrustedSender(event);
-    app.setLoginItemSettings({ openAtLogin: enabled === true, args: [HIDDEN_ARG] });
+    setLaunchAtLogin(enabled === true, HIDDEN_ARG);
   });
 }
 

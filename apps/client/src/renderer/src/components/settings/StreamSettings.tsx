@@ -75,7 +75,7 @@ export function StreamSettings() {
       />
       <div className="settings-divider" />
       <ToggleRow
-        label="Iniciar com o Windows"
+        label="Iniciar com o sistema"
         description="Abre minimizado na bandeja quando você liga o PC."
         checked={launchAtLogin === true}
         disabled={launchAtLogin === null}

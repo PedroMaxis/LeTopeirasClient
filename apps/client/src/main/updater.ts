@@ -27,6 +27,8 @@ export function registerUpdater(getWindow: () => BrowserWindow | null): void {
 
   // Dev runs have no app-update.yml and nothing to update.
   if (!app.isPackaged) return;
+  // On Linux only the AppImage can replace itself; a .deb is updated by hand.
+  if (process.platform === 'linux' && !process.env['APPIMAGE']) return;
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
