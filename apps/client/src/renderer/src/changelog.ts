@@ -5,6 +5,12 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.4.1',
+    items: [
+      '**Linux**: o login agora fica salvo mesmo em desktops sem chaveiro (como Hyprland, sway e i3). Antes era preciso entrar de novo toda vez que abria o app. Lembre de marcar **Manter conectado**.',
+    ],
+  },
+  {
     version: '0.4.0',
     items: [
       '**Ouvir junto**: dentro de uma sala de voz, abra a **Música** no cabeçalho, busque no YouTube (ou cole um link do YouTube ou do Spotify) e monte a fila. Todo mundo da sala ouve a mesma música, e qualquer um pode pausar, pular ou ir para outro ponto. A música sai no dispositivo de áudio padrão do Windows, e quem usa caixa de som pode ouvir eco no microfone.',
