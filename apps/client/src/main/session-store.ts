@@ -15,15 +15,30 @@ const sessionFile = () => join(app.getPath('userData'), 'session.bin');
  */
 let memoryToken: string | null = null;
 
-/** Keeps the session token on disk, encrypted with the OS (DPAPI on Windows). */
+const PLAIN_PREFIX = 'plain:';
+
+/**
+ * Linux desktops without a keyring (Hyprland, sway, i3...) cannot encrypt. There the token
+ * is kept in a file only the user can read, which is what Chromium's own "basic_text"
+ * fallback amounts to anyway. Windows and macOS never take this path.
+ */
+const usePlainFallback = () => process.platform === 'linux' && !safeStorage.isEncryptionAvailable();
+
+/** Keeps the session token on disk, encrypted with the OS (DPAPI on Windows, keyring on Linux). */
 export function registerSessionStore(): void {
   ipcMain.handle(IpcChannel.SessionLoad, (event): string | null => {
     assertTrustedSender(event);
     if (memoryToken) return memoryToken;
     const file = sessionFile();
-    if (!existsSync(file) || !safeStorage.isEncryptionAvailable()) return null;
+    if (!existsSync(file)) return null;
     try {
-      return tokenSchema.parse(safeStorage.decryptString(readFileSync(file)));
+      const raw = readFileSync(file);
+      if (raw.subarray(0, PLAIN_PREFIX.length).toString() === PLAIN_PREFIX) {
+        if (!usePlainFallback()) throw new Error('plain session on a system with encryption');
+        return tokenSchema.parse(raw.subarray(PLAIN_PREFIX.length).toString());
+      }
+      if (!safeStorage.isEncryptionAvailable()) return null;
+      return tokenSchema.parse(safeStorage.decryptString(raw));
     } catch {
       rmSync(file, { force: true });
       return null;
@@ -33,7 +48,11 @@ export function registerSessionStore(): void {
   ipcMain.handle(IpcChannel.SessionSave, (event, rawToken: unknown) => {
     assertTrustedSender(event);
     const token = tokenSchema.parse(rawToken);
-    // Never fall back to plain text: without encryption the user just logs in again.
+    if (usePlainFallback()) {
+      writeFileSync(sessionFile(), PLAIN_PREFIX + token, { mode: 0o600 });
+      return;
+    }
+    // Outside Linux never fall back to plain text: without encryption the user just logs in again.
     if (!safeStorage.isEncryptionAvailable()) return;
     writeFileSync(sessionFile(), safeStorage.encryptString(token));
   });
