@@ -3,8 +3,8 @@ import { isReactionEmoji } from '@letopeiras/shared';
 /** What a custom sound must respect (the file is kept in IndexedDB on this PC). */
 export const SOUNDBOARD_LIMITS = {
   customSounds: 20,
-  maxBytes: 1024 * 1024,
-  maxSeconds: 5,
+  maxBytes: 5 * 1024 * 1024,
+  maxSeconds: 10,
   nameMax: 24,
 } as const;
 
@@ -19,7 +19,7 @@ export function validateCustomSound(file: {
   if (file.existing >= SOUNDBOARD_LIMITS.customSounds) {
     return `Você já tem ${SOUNDBOARD_LIMITS.customSounds} sons. Remova um para adicionar outro.`;
   }
-  if (file.bytes > SOUNDBOARD_LIMITS.maxBytes) return 'O arquivo passa de 1 MB.';
+  if (file.bytes > SOUNDBOARD_LIMITS.maxBytes) return 'O arquivo passa de 5 MB.';
   if (file.seconds > SOUNDBOARD_LIMITS.maxSeconds) {
     return `O som passa de ${SOUNDBOARD_LIMITS.maxSeconds} segundos.`;
   }

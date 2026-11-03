@@ -16,8 +16,8 @@ describe('validateCustomSound', () => {
   });
 
   it('refuses files that are too big, too long or unreadable', () => {
-    expect(validateCustomSound({ ...ok, bytes: SOUNDBOARD_LIMITS.maxBytes + 1 })).toMatch(/1 MB/);
-    expect(validateCustomSound({ ...ok, seconds: 5.5 })).toMatch(/5 segundos/);
+    expect(validateCustomSound({ ...ok, bytes: SOUNDBOARD_LIMITS.maxBytes + 1 })).toMatch(/5 MB/);
+    expect(validateCustomSound({ ...ok, seconds: 10.5 })).toMatch(/10 segundos/);
     expect(validateCustomSound({ ...ok, seconds: 0 })).toMatch(/ler/);
     expect(validateCustomSound({ ...ok, seconds: Number.NaN })).toMatch(/ler/);
   });

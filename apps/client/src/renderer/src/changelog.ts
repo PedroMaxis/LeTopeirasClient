@@ -5,6 +5,12 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.4.2',
+    items: [
+      '**Soundboard**: seus sons agora podem ter até 10 segundos e 5 MB. Também corrigi a lista **Meus sons**, que ficava cortada quando um nome era comprido.',
+    ],
+  },
+  {
     version: '0.4.1',
     items: [
       '**Linux**: o login agora fica salvo mesmo em desktops sem chaveiro (como Hyprland, sway e i3). Antes era preciso entrar de novo toda vez que abria o app. Lembre de marcar **Manter conectado**.',

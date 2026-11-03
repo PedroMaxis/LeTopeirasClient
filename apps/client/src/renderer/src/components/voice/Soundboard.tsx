@@ -176,7 +176,7 @@ export function SoundboardPopover({ onClose }: { onClose(): void }) {
           <button
             type="button"
             className="sound-button add"
-            title="Adicionar um som (até 5 s e 1 MB)"
+            title="Adicionar um som (até 10 s e 5 MB)"
             onClick={() => file.current?.click()}
           >
             <Icon name="plus" size={22} />
