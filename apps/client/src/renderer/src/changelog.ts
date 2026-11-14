@@ -5,6 +5,12 @@
  */
 export const CHANGELOG: { version: string; items: string[] }[] = [
   {
+    version: '0.4.3',
+    items: [
+      '**Parsec**: quem hospeda pelo Parsec pode impedir que os convidados ouçam a call. Em **Configurações → Transmissão → Parsec**, escolha **LeTopeiras** (ou **Discord** para voltar ao padrão). Feche o Parsec antes de trocar; ele abre de novo sozinho.',
+    ],
+  },
+  {
     version: '0.4.2',
     items: [
       '**Soundboard**: seus sons agora podem ter até 10 segundos e 5 MB. Também corrigi a lista **Meus sons**, que ficava cortada quando um nome era comprido.',
