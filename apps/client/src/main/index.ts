@@ -10,6 +10,7 @@ import { registerDiagnostics, startCrashReporter } from './diagnostics';
 import { configurePermissions } from './permissions';
 import { assertTrustedSender, rendererDevUrl, rendererFile } from './renderer';
 import { registerImageSave } from './image-save';
+import { registerParsec } from './parsec';
 import { registerPushToTalk } from './push-to-talk';
 import { registerScreenCapture } from './screen-capture';
 import { registerSessionStore } from './session-store';
@@ -191,6 +192,7 @@ if (!app.requestSingleInstanceLock()) {
     registerVoiceResume();
     registerSpellcheck();
     registerImageSave();
+    registerParsec();
     registerIpc(() => mainWindow);
     mainWindow = createMainWindow();
     createTray(mainWindow, () => app.quit());

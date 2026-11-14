@@ -50,7 +50,23 @@ export const IpcChannel = {
   /** main → renderer: an update finished downloading (payload: version). */
   UpdateReady: 'update:ready',
   LogEvent: 'log:event',
+  ParsecEchoGet: 'parsec:echo-get',
+  ParsecEchoSet: 'parsec:echo-set',
 } as const;
+
+/**
+ * The app Parsec's echo cancelling ("New") leaves out of what guests hear when this PC hosts:
+ * us, Discord, something else picked by hand, or none (echo cancelling not on "New").
+ */
+export type ParsecEchoTarget = 'letopeiras' | 'discord' | 'other' | 'off';
+
+/** Unavailable outside Windows or when no Parsec config.json exists. */
+export type ParsecEchoStatus =
+  { available: false } | { available: true; target: ParsecEchoTarget; running: boolean };
+
+/** `running`: Parsec must be closed first, or it would overwrite the file with its own copy. */
+export type ParsecEchoSetResult =
+  { ok: true; reopened: boolean } | { ok: false; reason: 'running' | 'not-found' | 'failed' };
 
 /** `window.postMessage` tag the preload uses to hand the PCM port to the page. */
 export const SYSTEM_AUDIO_PORT_MESSAGE = 'letopeiras:system-audio-port';
@@ -226,4 +242,9 @@ export interface LeTopeirasApi {
    * Never put tokens, message text or window titles in `data`.
    */
   logEvent(event: string, data?: Record<string, unknown>): Promise<void>;
+
+  /** Which app Parsec keeps out of its guests' audio, and whether Parsec is open. */
+  getParsecEcho(): Promise<ParsecEchoStatus>;
+  /** Points Parsec's echo cancelling at us or at Discord, then reopens Parsec. */
+  setParsecEcho(target: 'letopeiras' | 'discord'): Promise<ParsecEchoSetResult>;
 }
